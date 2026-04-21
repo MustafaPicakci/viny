@@ -1,69 +1,156 @@
 import mdns from "multicast-dns";
 
 const mdnsInstance = mdns();
+const SERVICE_NAME = "_viny._tcp.local";
 
-export function discoverHosts(timeout = 3000): Promise<{ name: string; port: number }[]> {
+type HostInfo = { name: string; port: number };
+
+type MdnsRecord = {
+  name: string;
+  type: string;
+  data: any;
+  ttl?: number;
+};
+
+function getAllRecords(response: any): MdnsRecord[] {
+  return [...(response?.answers ?? []), ...(response?.additionals ?? [])];
+}
+
+export function discoverHosts(timeout = 3000): Promise<HostInfo[]> {
   return new Promise((resolve) => {
-    const hosts: { name: string; port: number }[] = [];
+    const hosts: HostInfo[] = [];
 
-    mdnsInstance.on("response", (response: any) => {
-      const ptr = response?.answers.find((a: any) => a.type === "PTR" && a.name === "_viny._tcp.local");
-      const srv = response?.answers.find((a: any) => a.type === "SRV");
+    const onResponse = (response: any) => {
+      const records = getAllRecords(response);
+      const ptrs = records.filter((a) => a.type === "PTR" && a.name === SERVICE_NAME);
 
-      if (ptr && srv && srv.type === "SRV") {
-        const name = (ptr.data as string).replace("._viny._tcp.local", "");
+      for (const ptr of ptrs) {
+        const instanceName = ptr.data as string;
+        const srv = records.find((a) => a.type === "SRV" && a.name === instanceName);
+
+        if (!srv) continue;
+
+        const name = instanceName.replace(`.${SERVICE_NAME}`, "");
         if (!hosts.find((h) => h.name === name)) {
           hosts.push({ name, port: srv.data.port });
         }
       }
-    });
+    };
+
+    mdnsInstance.on("response", onResponse);
 
     mdnsInstance.query({
-      questions: [{ name: "_viny._tcp.local", type: "PTR" }],
+      questions: [{ name: SERVICE_NAME, type: "PTR" }],
     });
 
-    setTimeout(() => resolve(hosts), timeout);
+    setTimeout(() => {
+      mdnsInstance.removeListener("response", onResponse);
+      resolve(hosts);
+    }, timeout);
   });
 }
 
 export function findByName(name: string, timeout = 3000): Promise<boolean> {
   return new Promise((resolve) => {
-    mdnsInstance.on("response", (response: any) => {
-      const ptr = response.answers.find((a: any) => a.type === "PTR" && a.name === "_viny._tcp.local");
-      if (!ptr) return;
+    let settled = false;
 
-      const foundName = (ptr.data as string).replace("._viny._tcp.local", "");
-      if (foundName === name) resolve(true);
-    });
+    const cleanup = () => {
+      mdnsInstance.removeListener("response", onResponse);
+    };
+
+    const finish = (value: boolean) => {
+      if (settled) return;
+
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const onResponse = (response: any) => {
+      const records = getAllRecords(response);
+      const ptrs = records.filter((a) => a.type === "PTR" && a.name === SERVICE_NAME);
+
+      for (const ptr of ptrs) {
+        const foundName = (ptr.data as string).replace(`.${SERVICE_NAME}`, "");
+
+        if (foundName === name) {
+          finish(true);
+          return;
+        }
+      }
+    };
+
+    mdnsInstance.on("response", onResponse);
 
     mdnsInstance.query({
-      questions: [{ name: "_viny._tcp.local", type: "PTR" }],
+      questions: [{ name: SERVICE_NAME, type: "PTR" }],
     });
 
-    setTimeout(() => resolve(false), timeout);
+    setTimeout(() => finish(false), timeout);
   });
 }
 
 export function registerHost(name: string, port: number = 3000) {
-  mdnsInstance.on("query", (query: any) => {
-    const match = query.questions.find((q: any) => q.name === "_viny._tcp.local");
-    if (!match) return;
+  const serviceName = `${name}.${SERVICE_NAME}`;
+  const packet = {
+    answers: [
+      {
+        name: SERVICE_NAME,
+        type: "PTR" as const,
+        ttl: 120,
+        data: serviceName,
+      },
+      {
+        name: serviceName,
+        type: "SRV" as const,
+        ttl: 120,
+        data: {
+          port,
+          target: `${name}.local`,
+          weight: 0,
+          priority: 0,
+        },
+      },
+    ],
+  };
 
+  const onQuery = (query: any) => {
+    const wantsService = query.questions?.some((q: any) => q.name === SERVICE_NAME && (q.type === "PTR" || q.type === "ANY"));
+
+    const wantsInstance = query.questions?.some((q: any) => q.name === serviceName && (q.type === "SRV" || q.type === "ANY"));
+
+    if (!wantsService && !wantsInstance) return;
+
+    mdnsInstance.respond(packet);
+  };
+
+  mdnsInstance.on("query", onQuery);
+  mdnsInstance.respond(packet);
+
+  console.log(`"${name}" host craeted on local network (port ${port})`);
+
+  return () => {
+    mdnsInstance.removeListener("query", onQuery);
     mdnsInstance.respond({
       answers: [
         {
+          name: SERVICE_NAME,
           type: "PTR",
-          name: "_viny._tcp.local",
-          data: `${name}._viny._tcp.local`,
+          ttl: 0,
+          data: serviceName,
         },
         {
+          name: serviceName,
           type: "SRV",
-          name: `${name}._viny._tcp.local`,
-          data: { port, target: `${name}.local`, weight: 0, priority: 0 },
+          ttl: 0,
+          data: {
+            port,
+            target: `${name}.local`,
+            weight: 0,
+            priority: 0,
+          },
         },
       ],
     });
-  });
-
-  console.log(`"${name}" host olarak kaydedildi (port ${port})`);
+  };
 }

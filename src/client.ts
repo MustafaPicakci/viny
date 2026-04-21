@@ -6,7 +6,7 @@ export class Client {
 
   runClient() {
     // Connect to the server
-    const client = net.createConnection({ host: "127.0.0.1", port: 4000 }, () => {
+    const client = net.createConnection({ host: "0.0.0.0", port: 4000 }, () => {
       console.log("TCP Client: Connected to server");
       // Send message
       client.write("Hello server! This is Client!");

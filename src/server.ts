@@ -1,5 +1,5 @@
-// src/server.ts
 import net from "net";
+import { registerHost } from "./discovery.js";
 
 export default class Server {
   name: string;
@@ -12,19 +12,33 @@ export default class Server {
     const server = net.createServer((socket) => {
       console.log("TCP Server: Client connected:", socket.remoteAddress);
 
-      // Receive data from the client
       socket.on("data", (data) => {
         console.log("TCP Server: Receive from client:", data.toString());
-        // send response
         socket.write("Hello client! I got your message: " + data.toString());
-        // socket.end();
       });
 
       socket.on("close", () => console.log("TCP Server: Client disconnected"));
     });
 
-    server.listen(4000, "127.0.0.1", () => {
-      console.log("TCP Server: Server listening on 127.0.0.1:4000");
+    server.listen(4000, "0.0.0.0", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("Server address could not be resolved");
+      }
+
+      const unregister = registerHost(this.name, address.port);
+
+      const shutdown = () => {
+        unregister();
+        server.close(() => {
+          process.exit(0);
+        });
+      };
+
+      process.once("SIGINT", shutdown);
+      process.once("SIGTERM", shutdown);
+
+      console.log(`TCP Server: ${this.name} listening on 0.0.0.0:${address.port}`);
     });
   }
 }

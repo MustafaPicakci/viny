@@ -14,7 +14,11 @@ import { listHosts } from "./commands/list-host.js";
 
 const listHostsCmd = program.command("list-hosts");
 listHostsCmd.exitOverride().action(async () => {
-  await listHosts();
+  await listHosts((message) => {
+    return new Promise((resolve) => {
+      replServer.question(message, resolve);
+    });
+  });
 });
 
 let replServer: REPLServer;
@@ -49,35 +53,7 @@ replServer = start({
     const args = cmd.trim().split(" ");
     try {
       await program.parseAsync(args, { from: "user" });
-    } catch (err) {
-      // hataları yakala, REPL ölmesin
-    }
+    } catch (err) {}
     callback(null, undefined);
   },
 });
-
-// announceJoin();
-// listenAnnouncements();
-// // renderPeers();
-
-// process.on("SIGINT", async () => {
-//   await announceLeave(config.username);
-//   console.log("yukarı");
-
-//   process.exit(0);
-// });
-
-// process.on("SIGTERM", async () => {
-//   console.log("aşağı");
-//   await announceLeave(config.username);
-//   process.exit(0);
-// });
-
-// program
-//   .command("connect <accountName>")
-//   .description("Create a an account")
-//   .action((accountName) => {
-//     console.log(chalk.blue(`🚀 Launching ${accountName}...`));
-//   });
-
-// program.parse(process.argv);
