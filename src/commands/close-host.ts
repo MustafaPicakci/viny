@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
 import { createInterface } from "readline/promises";
+import { closeMdns } from "../discovery.js";
 
 type Confirm = (message: string) => Promise<boolean>;
 
@@ -37,6 +38,7 @@ export async function closeHost(confirm: Confirm = askConfirm) {
     const kill = spawn("npx", ["kill-port", "4000"], {
       stdio: "inherit",
     });
+    closeMdns();
 
     kill.on("close", (code) => {
       if (code !== 0) {

@@ -28,12 +28,7 @@ export default class Server {
 
       const unregister = registerHost(this.name, address.port);
 
-      const shutdown = () => {
-        unregister();
-        server.close(() => {
-          process.exit(0);
-        });
-      };
+      const shutdown = () => {};
 
       process.once("SIGINT", shutdown);
       process.once("SIGTERM", shutdown);
@@ -44,4 +39,6 @@ export default class Server {
 }
 
 const name = process.argv[2];
+console.log(name);
+
 if (name) new Server(name).runServer();
