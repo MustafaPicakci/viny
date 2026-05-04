@@ -1,5 +1,9 @@
 import { spawn } from "child_process";
 import path from "path";
+import Container from "../container/Container.js";
+import type { HostRepository } from "../repository/HostRepository.js";
+
+const hostRepository: HostRepository = Container.resolve("HostRepository");
 
 const _dir = import.meta.dirname;
 
@@ -42,6 +46,8 @@ export async function createHost(name?: string, askName: AskName = askHostName) 
       detached: true,
       stdio: "ignore",
     });
+    //TODO hard codede port değerlerini toparla!
+    hostRepository.create({ name: selectedName, port: 4000 });
 
     child.unref();
     console.log(`${selectedName} host is being created...`);

@@ -49,6 +49,7 @@ closeHostsCmd.exitOverride().action(async () => {
       }),
   );
 });
+
 replServer = start({
   prompt: "viny> ",
   ignoreUndefined: true,
