@@ -61,13 +61,13 @@ export default class Context {
     this.room = undefined;
     this.dmUser = undefined;
   }
-  buildPrompt(context: ContextType) {
-    if (!context.host) return "viny> ";
+  buildPrompt() {
+    if (!this.host) return "viny> ";
 
-    if (context.room) return `viny@${context.host.name}#${context.room.name}> `;
+    if (this.room) return `viny@${this.host.name}#${this.room.name}> `;
 
-    if (context.dmUser) return `viny@${context.host.name}@${context.dmUser.username}> `;
+    if (this.dmUser) return `viny@${this.host.name}@${this.dmUser.username}> `;
 
-    return `viny@${context.host.name}> `;
+    return `viny@${this.host.name}> `;
   }
 }

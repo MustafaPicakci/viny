@@ -11,12 +11,14 @@ program.exitOverride();
 import { closeHost } from "./commands/close-host.js";
 import { createHost } from "./commands/create-host.js";
 import { listHosts } from "./commands/list-host.js";
+import Context from "./context.js";
 
 const listHostsCmd = program.command("list-hosts");
 listHostsCmd.exitOverride().action(async () => {
   await listHosts((message) => {
     return new Promise((resolve) => {
       replServer.question(message, resolve);
+      replServer.setPrompt(Context.getInstance().buildPrompt());
     });
   });
 });
@@ -30,6 +32,7 @@ createHostsCmd.exitOverride().action(async (name?: string) => {
     (message) =>
       new Promise((resolve) => {
         replServer.question(message, resolve);
+        replServer.setPrompt(Context.getInstance().buildPrompt());
       }),
   );
 });
@@ -49,10 +52,12 @@ closeHostsCmd.exitOverride().action(async () => {
 replServer = start({
   prompt: "viny> ",
   ignoreUndefined: true,
+
   eval: async (cmd, context, filename, callback) => {
     const args = cmd.trim().split(" ");
     try {
       await program.parseAsync(args, { from: "user" });
+      replServer.setPrompt(Context.getInstance().buildPrompt());
     } catch (err) {}
     callback(null, undefined);
   },

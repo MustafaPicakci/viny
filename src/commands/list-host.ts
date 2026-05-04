@@ -1,5 +1,5 @@
+import Context from "../context.js";
 import { discoverHosts } from "../discovery.js";
-
 type Ask = (message: string) => Promise<string>;
 
 async function ask(message: string): Promise<string> {
@@ -38,5 +38,6 @@ export async function listHosts(askUser: Ask = ask) {
   }
 
   const selectedHost = hosts[selectedIndex];
+  Context.getInstance().setHost({ id: "şimdilik null", name: selectedHost?.name!, address: "şimdilik statik local address", port: selectedHost?.port! });
   console.log(`${selectedHost?.name} (${selectedHost?.port}) seçildi`);
 }

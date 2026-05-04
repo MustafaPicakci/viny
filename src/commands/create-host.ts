@@ -35,9 +35,7 @@ export async function createHost(name?: string, askName: AskName = askHostName) 
     const projectRoot = path.resolve(runtimeDir, "..");
     const isDistRuntime = path.basename(runtimeDir) === "dist";
     const serverEntry = path.resolve(runtimeDir, isDistRuntime ? "server.js" : "server.ts");
-    const command = isDistRuntime
-      ? process.execPath
-      : path.resolve(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
+    const command = isDistRuntime ? process.execPath : path.resolve(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
 
     const child = spawn(command, [serverEntry, selectedName], {
       cwd: projectRoot,
