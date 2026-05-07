@@ -12,7 +12,7 @@ export class HostRepository implements Repository<Host> {
     return this.db.prepare("SELECT * FROM hosts").all() as Host[];
   }
   create(payload: Omit<Host, "id" | "createdAt">): Host {
-    const id = this.db.prepare("INSERT INTO hosts (port) VALUES (?)").run(payload.port);
+    const id = this.db.prepare("INSERT INTO hosts (name,port) VALUES (?,?)").run(payload.name, payload.port);
     return this.findById(id.lastInsertRowid as number) as Host;
   }
   delete(id: number): boolean {

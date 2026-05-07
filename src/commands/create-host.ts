@@ -47,7 +47,7 @@ export async function createHost(name?: string, askName: AskName = askHostName) 
       stdio: "ignore",
     });
     //TODO hard codede port değerlerini toparla!
-    hostRepository.create({ name: selectedName, port: 4000 });
+    hostRepository.create({ name: selectedName, port: 4000, ownerId: 1 });
 
     child.unref();
     console.log(`${selectedName} host is being created...`);
