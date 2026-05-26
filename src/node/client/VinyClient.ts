@@ -1,6 +1,6 @@
 import axios from "axios";
 axios.defaults.baseURL = "http://localhost:4000";
-export class VinyClient {
+export default class VinyClient {
   private static instance: VinyClient;
 
   private constructor() {}
@@ -12,17 +12,16 @@ export class VinyClient {
     return VinyClient.instance;
   }
   async register(username: string, password: string) {
-    return axios.post("/api/register", { username, password });
+    return axios.post("/api/auth/register", { username, password });
   }
 
   async login(username: string, password: string) {
-    return axios.post("/api/login", { username, password });
+    return axios.post("/api/auth/login", { username, password });
   }
 
   async logout() {
-    return axios.get("/api/logout");
+    return axios.get("/api/auth/logout");
   }
 
   async connect() {}
 }
-export default VinyClient.getInstance();

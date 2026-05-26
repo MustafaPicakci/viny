@@ -7,55 +7,13 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
 import type LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
 import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
+import DuplicateException from "../../core/common/exception/DuplicateException.js";
+import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
 import type ConnectionRegistry from "../../core/transport/ConnectionRegistry.js";
 import type SearchUserUsecase from "../../core/user/usecase/SearchUserUsecase.js";
 import type UserPort from "../../core/user/UserPort.js";
 
-// const app = express();
-// app.use(cors());
-
-// app.get("/", (req, res) => {
-//   res.send("Hello World!");
-// });
-
-// const server = http.createServer(app);
-// const wss = new WebSocketServer({ server });
-
-// wss.on("connection", (ws) => {
-//   console.log("New WebSocket connection");
-//   ws.send("Welcome to the WebSocket server!");
-// });
-
-// server.on("upgrade", (req, socket, head) => {
-//   // Extract token from query string or header
-//   const url = new URL(req.url!);
-//   const token = url.searchParams.get("token");
-
-//   if (!token) {
-//     socket.write("HTTP/1.1 401 Unauthorized");
-//     socket.destroy();
-//     return;
-//   }
-// });
-
-// server.listen(4000, () => {
-//   console.log("Server is listening on port 4000");
-// });
-
-// wss.on("connection", (ws) => {
-//   ws.on("message", (data) => {
-//     const msg = JSON.parse(data.toString());
-//     console.log(msg);
-//     if (msg.type === "subscribe") {
-//       //   if (!canAccess(ws.user, msg.channel)) {
-//       //     ws.send(JSON.stringify({ error: "Forbidden" }));
-//       //     return;
-//       //   }
-//       //   channels.get(msg.channel)?.add(ws);
-//     }
-//   });
-// });
 interface AuthedRequest extends Request {
   userId?: number;
 }
@@ -87,12 +45,32 @@ export default class VinyServer {
 
   constructor(private options: VinyServerOptions) {}
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
     this.app = express();
+    this.app.use(express.json());
     this.registerRoutes(this.app);
+
     this.httpServer = createServer(this.app);
+    this.wireErrorHandler(this.app);
     this.wsServer = new WebSocketServer({ server: this.httpServer, path: "/viny/ws" });
     this.wireWebsocket(this.wsServer);
+
+    return new Promise((resolve) => {
+      this.httpServer!.listen(this.options.port, this.options.host, () => {
+        console.log(`VinyServer listening on ${this.options.host}:${this.options.port}`);
+        resolve();
+      });
+    });
+  }
+
+  private wireErrorHandler(app: Express): void {
+    app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      if (err instanceof DuplicateException) return res.status(409).json({ error: err.message });
+      if (err instanceof NotFoundException) return res.status(404).json({ error: err.message });
+      if (err instanceof UnauthorizedException) return res.status(401).json({ error: err.message });
+      console.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    });
   }
 
   private wireWebsocket(wss: WebSocketServer) {
@@ -150,7 +128,7 @@ export default class VinyServer {
   private registerRoutes(app: Express) {
     const { usecases } = this.options;
 
-    app.post("/auth/register", async (req, res, next) => {
+    app.post("/api/auth/register", async (req, res, next) => {
       try {
         const user = await usecases.register.handle({ username: req.body.username, password: req.body.password });
         res.status(201).json({ id: user.id, username: user.username });
@@ -158,7 +136,7 @@ export default class VinyServer {
         next(err);
       }
     });
-    app.post("/auth/login", async (req, res, next) => {
+    app.post("/api/auth/login", async (req, res, next) => {
       try {
         const result = await usecases.login.handle({ username: req.body.username, password: req.body.password });
         res.status(200).json(result);
@@ -169,7 +147,7 @@ export default class VinyServer {
 
     const requireAuth = this.requireAuth.bind(this);
 
-    app.get("/users", requireAuth, async (req: AuthedRequest, res, next) => {
+    app.get("/api/users", requireAuth, async (req: AuthedRequest, res, next) => {
       try {
         const requestedBy = await this.loadUser(req.userId!);
         const query = typeof req.query.q === "string" ? req.query.q : "";

@@ -1,15 +1,28 @@
-console.log("Hello, World!");
-import VinyClient from "./code/client/VinyClient.js";
+import VinyClient from "./node/client/VinyClient.js";
+import { createVinyServer } from "./node/factory/CreateVinyServer.js";
 
-const client = VinyClient;
+const vinyServer = await createVinyServer({
+  port: 4000,
+  host: "0.0.0.0",
+});
 
-const response = await client.register("username", "password");
-console.log("Registration response:", response.data);
+vinyServer.start();
 
-const loginResponse = await client.login("username", "password");
-console.log("Login response:", loginResponse.data);
+try {
+  console.log("Hello, World!");
 
-await client.connect();
+  const client = VinyClient.getInstance();
 
-const logoutResponse = await client.logout();
-console.log("Logout response:", logoutResponse.data);
+  const response = await client.register("username", "password");
+  console.log("Registration response:", response.data);
+
+  const loginResponse = await client.login("username", "password");
+  console.log("Login response:", loginResponse.data);
+
+  await client.connect();
+
+  //   const logoutResponse = await client.logout();
+  //   console.log("Logout response:", logoutResponse.data);
+} catch (error: any) {
+  console.error("An error occurred:", error.data || error.message || error);
+}

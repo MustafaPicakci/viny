@@ -1,3 +1,13 @@
+// import { createVinyServer } from "./factory/CreateVinyServer.js";
+
+// const vinyServer = await createVinyServer({
+//   port: 4000,
+//   host: "localhost",
+// });
+
+// vinyServer.start();
+//vinyServer.stop()
+
 // import AuthenticationAdapter, { type AuthAdapterOptions } from "./auth/AuthenticationAdapter.js";
 // import db from "./db/Db.js";
 // import UserAdapter from "./user/UserAdapter.js";
