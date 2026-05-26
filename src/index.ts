@@ -1,37 +1,15 @@
-#!/usr/bin/env node
-import chalk from "chalk";
-import { Command } from "commander";
-import { loadConfig } from "./config.js";
-import { announceJoin, announceLeave, listenAnnouncements } from "./discovery.js";
+console.log("Hello, World!");
+import VinyClient from "./code/client/VinyClient.js";
 
-const program = new Command();
+const client = VinyClient;
 
-const config = await loadConfig();
+const response = await client.register("username", "password");
+console.log("Registration response:", response.data);
 
-config.username && console.log(chalk.green(`👋 Merhaba, ${config.username}!`));
+const loginResponse = await client.login("username", "password");
+console.log("Login response:", loginResponse.data);
 
-announceJoin();
-listenAnnouncements();
-// renderPeers();
+await client.connect();
 
-process.on("SIGINT", async () => {
-  await announceLeave(config.username);
-  console.log("yukarı");
-
-  process.exit(0);
-});
-
-process.on("SIGTERM", async () => {
-  console.log("aşağı");
-  await announceLeave(config.username);
-  process.exit(0);
-});
-
-// program
-//   .command("connect <accountName>")
-//   .description("Create a an account")
-//   .action((accountName) => {
-//     console.log(chalk.blue(`🚀 Launching ${accountName}...`));
-//   });
-
-// program.parse(process.argv);
+const logoutResponse = await client.logout();
+console.log("Logout response:", logoutResponse.data);
