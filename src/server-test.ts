@@ -2,7 +2,8 @@ import { createVinyServer } from "./node/factory/CreateVinyServer.js";
 
 const vinyServer = await createVinyServer({
   port: 4000,
-  host: "0.0.0.0",
+  address: "0.0.0.0",
+  name: "My Viny Server",
 });
 
 vinyServer.start();
