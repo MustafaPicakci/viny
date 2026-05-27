@@ -1,6 +1,5 @@
-import Bonjour from "bonjour-service";
+import { Bonjour, type Browser, type Service } from "bonjour-service";
 
-import type { Browser, Service } from "bonjour-service/dist/lib/bonjour.js";
 import type DiscoveryPort from "../../core/discovery/discoveryPort.js";
 import type { Host } from "../../core/host/Host.js";
 
