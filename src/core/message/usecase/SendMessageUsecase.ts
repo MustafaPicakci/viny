@@ -35,7 +35,7 @@ export default class SendMessageUsecase {
     const message = await this.messagePort.create({ conversationId: payload.conversationId, senderId: payload.senderId, text: payload.text, timestamp: new Date() });
 
     await this.transportPort.transport(
-      payload.text,
+      message,
       conversation.participants.filter((id: number) => id !== payload.senderId),
     );
     return message;

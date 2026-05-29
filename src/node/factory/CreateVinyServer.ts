@@ -5,6 +5,19 @@ import DiscoveryAdapter from "../discovery/DiscoveryAdapter.js";
 import VinyServer from "../server/server.js";
 import UserAdapter from "../user/UserAdapter.js";
 
+import LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
+import RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
+import CreateDMUsecase from "../../core/conversation/usecase/CreateDmUsecase.js";
+import CreateRoomUsecase from "../../core/conversation/usecase/CreateRoomUsecase.js";
+import JoinRoomUsecase from "../../core/conversation/usecase/JoinRoomUsecase.js";
+import ListConversationsUsecase from "../../core/conversation/usecase/ListConversationsUsecase.js";
+import FetchMessagesUsecase from "../../core/message/usecase/FetchMessagesUsecase.js";
+import SendMessageUsecase from "../../core/message/usecase/SendMessageUsecase.js";
+import SearchUserUsecase from "../../core/user/usecase/SearchUserUsecase.js";
+import ConversationAdapter from "../conversation/ConversationAdapter.js";
+import MessageAdapter from "../message/MessageAdapter.js";
+import TransportAdapter from "../transport/TransportAdapter.js";
+
 export interface ServerOptions {
   address?: string;
   port: number;
@@ -20,6 +33,9 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
   const authAdapter = new AuthenticationAdapter({ jwtSecret: "your-jwt-secret", tokenTtlSeconds: 60 * 60 * 24, bcryptSaltRounds: 10 });
   const userAdapter = new UserAdapter(db);
   const discoveryAdapter = new DiscoveryAdapter();
+  const conversationAdapter = new ConversationAdapter(db);
+  const messageAdapter = new MessageAdapter(db);
+  const transportAdapter = new TransportAdapter(new ConnectionRegistry());
   const server = new VinyServer({
     port: 4000,
     host: options.address || "0.0.0.0",
@@ -27,9 +43,15 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
     authenticationPort: authAdapter,
     userPort: userAdapter,
     usecases: {
-      register: new (await import("../../core/auth/usecase/RegisterUsecase.js")).default(authAdapter, userAdapter),
-      login: new (await import("../../core/auth/usecase/LoginUsecase.js")).default(authAdapter, userAdapter),
-      searchUsers: new (await import("../../core/user/usecase/SearchUserUsecase.js")).default(userAdapter),
+      register: new RegisterUsecase(authAdapter, userAdapter),
+      login: new LoginUsecase(authAdapter, userAdapter),
+      searchUsers: new SearchUserUsecase(userAdapter),
+      listConversations: new ListConversationsUsecase(conversationAdapter),
+      fetchMessages: new FetchMessagesUsecase(conversationAdapter, messageAdapter),
+      createRoom: new CreateRoomUsecase(conversationAdapter),
+      joinRoom: new JoinRoomUsecase(conversationAdapter),
+      createDM: new CreateDMUsecase(userAdapter, conversationAdapter),
+      sendMessage: new SendMessageUsecase(conversationAdapter, messageAdapter, userAdapter, transportAdapter),
     },
   });
 

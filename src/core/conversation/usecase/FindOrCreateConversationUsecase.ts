@@ -2,7 +2,7 @@ import type Conversation from "../Conversation.js";
 import type ConversationPort from "../Conversationport.js";
 
 export interface FindOrCreateConversationRequest {
-  participants?: string[];
+  participants?: number[];
   name?: string;
 }
 
@@ -13,6 +13,13 @@ export default class FindOrCreateConversationUsecase {
     if (payload.name) {
       return await this.conversationPort.findByName(payload.name);
     }
-    return await this.conversationPort.findByParticipants(payload.participants || []);
+    const conversation = await this.conversationPort.findByParticipants(payload.participants || []);
+    if (conversation) {
+      return conversation;
+    }
+    return await this.conversationPort.create({
+      type: "DM",
+      participants: payload.participants || [],
+    });
   }
 }
