@@ -12,7 +12,7 @@ import DiscoveryAdapter from "./node/discovery/DiscoveryAdapter.js";
 try {
   console.log("Hello, World!");
 
-  const client = VinyClient.getInstance();
+  const client = VinyClient.getInstance({ address: "0.0.0.0", port: 4000 });
 
   //   const response = await client.register("username", "password");
   //   console.log("Registration response:", response.data);

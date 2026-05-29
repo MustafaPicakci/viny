@@ -1,6 +1,7 @@
 import DuplicateException from "../../common/exception/DuplicateException.js";
 import NotFoundException from "../../common/exception/NotFoundException.js";
 import type { Usecase, UsecaseInput } from "../../common/Usecase.js";
+import type Session from "../../user/Session.js";
 import type UserPort from "../../user/UserPort.js";
 
 import type AuthenticationPort from "../AuthenticationPort.js";
@@ -12,18 +13,12 @@ export interface LoginRequest extends UsecaseInput {
   password: string;
 }
 
-export interface LoginResponse {
-  username: string;
-  token: string;
-  expiresAt: Date;
-}
-
-export default class LoginUsecase implements Usecase<LoginRequest, LoginResponse> {
+export default class LoginUsecase implements Usecase<LoginRequest, Session> {
   constructor(
     private readonly authenticationPort: AuthenticationPort,
     private readonly userPort: UserPort,
   ) {}
-  async handle(payload: LoginRequest): Promise<LoginResponse> {
+  async handle(payload: LoginRequest): Promise<Session> {
     const user = await this.userPort.findByUsername(payload.username);
 
     if (!user) {
@@ -39,6 +34,7 @@ export default class LoginUsecase implements Usecase<LoginRequest, LoginResponse
     const issuedToken = await this.authenticationPort.generateToken({ userId: user.id, username: user.username });
 
     return {
+      userId: user.id,
       username: user.username,
       ...issuedToken,
     };

@@ -6,4 +6,5 @@ export default interface ConversationPort {
   findByParticipants(participants: string[]): Promise<Conversation>;
   findById(id: number): Promise<Conversation>;
   list(): Promise<Conversation[]>;
+  listForUser(userId: number): Promise<Conversation[]>;
 }

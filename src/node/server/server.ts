@@ -10,6 +10,8 @@ import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import DuplicateException from "../../core/common/exception/DuplicateException.js";
 import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
+import type ListConversationsUsecase from "../../core/conversation/usecase/ListConversationsUsecase.js";
+import type FetchMessagesUsecase from "../../core/message/usecase/FetchMessagesUsecase.js";
 import type ConnectionRegistry from "../../core/transport/ConnectionRegistry.js";
 import type SearchUserUsecase from "../../core/user/usecase/SearchUserUsecase.js";
 import type UserPort from "../../core/user/UserPort.js";
@@ -32,8 +34,8 @@ export interface VinyServerOptions {
     // createRoom: CreateRoomUsecase;
     // joinRoom: JoinRoomUsecase;
     // sendMessage: SendMessageUsecase;
-    // listConversations: ListConversationsUsecase;
-    // fetchMessages: FetchMessagesUsecase;
+    listConversations: ListConversationsUsecase;
+    fetchMessages: FetchMessagesUsecase;
   };
 }
 
@@ -147,12 +149,33 @@ export default class VinyServer {
 
     const requireAuth = this.requireAuth.bind(this);
 
-    app.get("/api/users", requireAuth, async (req: AuthedRequest, res, next) => {
+    app.get("/api/users/search", requireAuth, async (req: AuthedRequest, res, next) => {
       try {
         const requestedBy = await this.loadUser(req.userId!);
         const query = typeof req.query.q === "string" ? req.query.q : "";
         const users = await usecases.searchUsers.handle({ requestedBy: requestedBy.id, query });
         res.json(users);
+      } catch (err) {
+        next(err);
+      }
+    });
+    app.get("/api/conversations", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const conversations = await usecases.listConversations.handle({ requestedBy: requestedBy.id });
+        res.json(conversations);
+      } catch (err) {
+        next(err);
+      }
+    });
+    app.get("/conversations/:id/messages", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const messages = await usecases.fetchMessages.handle({
+          requestedBy: requestedBy.id,
+          conversationId: Number(req.params.id),
+        });
+        res.json(messages);
       } catch (err) {
         next(err);
       }
