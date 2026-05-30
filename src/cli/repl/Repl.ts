@@ -185,11 +185,19 @@ export default class Repl {
         run: async ([username]) => {
           if (!username) throw new Error("Usage: create-dm <username>");
           const { data } = await this.ifClientPresent().dmUser(username);
-          // console.log(chalk.green(`DM created: ${data.name} (#${data.id})`));
           this.activeConversationId = data.id;
-          // this.activeConversationName = username;
-
           this.activeConversationName = `DM#${username}`;
+
+          const { data: messages } = await this.ifClientPresent().fetchMessages(data.id);
+          if (messages.length === 0) {
+            console.log(chalk.gray("(no previous messages)"));
+          } else {
+            for (const m of messages) {
+              const time = new Date(m.timestamp ?? m.createdAt).toLocaleString();
+              const user = m.senderId === this.session?.userId ? this.session?.username : username;
+              console.log(chalk.gray(`[${time}] `) + chalk.cyan(`${user}`) + chalk.gray(" › ") + m.text);
+            }
+          }
         },
       },
 
@@ -224,7 +232,6 @@ export default class Repl {
     try {
       await this.vinyClient.connect();
       this.vinyClient.onMessage((msg) => {
-        console.log(msg);
         readline.cursorTo(process.stdout, 0);
         readline.clearLine(process.stdout, 0);
         const time = msg.timestamp.toLocaleTimeString();
