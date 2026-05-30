@@ -10,6 +10,7 @@ import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import DuplicateException from "../../core/common/exception/DuplicateException.js";
 import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
+import type AddRoomParticipantUsecase from "../../core/conversation/usecase/AddRoomParticioantUsecase.js";
 import type CreateDMUsecase from "../../core/conversation/usecase/CreateDmUsecase.js";
 import type CreateRoomUsecase from "../../core/conversation/usecase/CreateRoomUsecase.js";
 import type JoinRoomUsecase from "../../core/conversation/usecase/JoinRoomUsecase.js";
@@ -37,6 +38,7 @@ export interface VinyServerOptions {
     createDM: CreateDMUsecase;
     createRoom: CreateRoomUsecase;
     joinRoom: JoinRoomUsecase;
+    addRoomParticipant: AddRoomParticipantUsecase;
     sendMessage: SendMessageUsecase;
     listConversations: ListConversationsUsecase;
     fetchMessages: FetchMessagesUsecase;
@@ -58,7 +60,7 @@ export default class VinyServer {
 
     this.httpServer = createServer(this.app);
     this.wireErrorHandler(this.app);
-    this.wsServer = new WebSocketServer({ server: this.httpServer, path: "/viny/ws" });
+    this.wsServer = new WebSocketServer({ server: this.httpServer, path: "/ws" });
     this.wireWebsocket(this.wsServer);
 
     return new Promise((resolve) => {
@@ -81,8 +83,6 @@ export default class VinyServer {
 
   private wireWebsocket(wss: WebSocketServer) {
     wss.on("connection", async (ws: WebSocket, req) => {
-      console.log("New WebSocket connection");
-
       const token = this.extractToken(req.url || "");
       const payload = token ? await this.options.authenticationPort.validateToken(token) : null;
 
@@ -93,18 +93,20 @@ export default class VinyServer {
       }
 
       this.options.registry.addConnection(payload.userId, ws);
-      ws.on("close", () => this.options.registry.removeConnection(payload.userId));
-      ws.on("error", () => this.options.registry.removeConnection(payload.userId));
+      const cleanup = () => {
+        if (this.options.registry.getConnection(payload.userId) === ws) {
+          this.options.registry.removeConnection(payload.userId);
+        }
+      };
+      ws.on("close", cleanup);
+      ws.on("error", cleanup);
     });
   }
 
   private extractToken(rawUrl: string): string | null {
-    try {
-      const url = new URL(rawUrl);
-      return url.searchParams.get("token");
-    } catch {
-      return null;
-    }
+    const qIndex = rawUrl.indexOf("?");
+    if (qIndex === -1) return null;
+    return new URLSearchParams(rawUrl.slice(qIndex + 1)).get("token");
   }
   async stop(): Promise<void> {
     if (this.wsServer) {
@@ -172,7 +174,7 @@ export default class VinyServer {
         next(err);
       }
     });
-    app.get("/conversations/:id/messages", requireAuth, async (req: AuthedRequest, res, next) => {
+    app.get("/api/conversations/:id/messages", requireAuth, async (req: AuthedRequest, res, next) => {
       try {
         const requestedBy = await this.loadUser(req.userId!);
         const messages = await usecases.fetchMessages.handle({
@@ -184,7 +186,57 @@ export default class VinyServer {
         next(err);
       }
     });
+    app.post("/api/conversations/:id/messages", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const messages = await usecases.sendMessage.handle({
+          requestedBy: requestedBy.id,
+          conversationId: Number(req.params.id),
+          text: req.body.text,
+          senderId: requestedBy.id,
+        });
+        res.json(messages);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post("/api/dm", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const { name, type, peerUsername } = req.body;
+
+        const conversation = await usecases.createDM.handle({ requestedBy: requestedBy.id, peerUsername });
+        res.status(201).json(conversation);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post("/api/room", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const { name } = req.body;
+
+        const conversation = await usecases.createRoom.handle({ requestedBy: requestedBy.id, name });
+        res.status(201).json(conversation);
+      } catch (err) {
+        next(err);
+      }
+    });
+    app.post("/api/room/:id/participants", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const { name } = req.body;
+
+        const conversation = await usecases.addRoomParticipant.handle({ requestedBy: requestedBy.id, conversationId: Number(req.params.id), username: name });
+        res.status(200).json(conversation);
+      } catch (err) {
+        next(err);
+      }
+    });
   }
+
   private async loadUser(userId: number) {
     const user = await this.options.userPort.findById(userId);
     if (!user) throw new UnauthorizedException("User no longer exists");

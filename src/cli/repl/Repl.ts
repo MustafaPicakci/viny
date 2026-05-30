@@ -14,6 +14,7 @@ export default class Repl {
   private commands!: Record<string, { run: CommandHandler; help: string }>;
   private rl!: ReturnType<typeof createInterface>;
   private activeConversationId?: number;
+  private activeConversationPeerId?: number;
   private activeConversationName?: string;
   private stdinClosed = false;
   private queue: string[] = [];
@@ -43,7 +44,7 @@ export default class Repl {
   private buildPrompt(): string {
     const host = this.host ? `${this.host.address}:${this.host.port}` : "no-host";
     const user = this.session?.username ?? "anon";
-    const conv = this.activeConversationId !== undefined ? chalk.yellow(` ${this.activeConversationName ?? `#${this.activeConversationId}`}`) + chalk.gray(" ›") : "";
+    const conv = this.activeConversationId !== undefined ? chalk.yellow(` ${this.activeConversationName ?? `#${this.activeConversationId}`}`) : "";
     return chalk.gray(`[${host}] `) + chalk.cyan(user) + conv + chalk.gray(" › ");
   }
   private tokenize(line: string): string[] {
@@ -136,9 +137,11 @@ export default class Repl {
         help: "login <username> <password>",
         run: async ([username, password]) => {
           if (!username || !password) throw new Error("Usage: login <username> <password>");
+
           const { data } = await this.ifClientPresent().login(username, password);
+
           this.session = data;
-          console.log(chalk.green(`Logged in as ${data.username} (#${data.id})`));
+          // console.log(chalk.green(`Logged in as ${data.username} (#${data.id})`));
           await this.attachListener();
         },
       },
@@ -157,9 +160,39 @@ export default class Repl {
           if (!query) throw new Error("Usage: users <query>");
           const { data } = await this.ifClientPresent().searchUsers(query);
           if (data.length === 0) return console.log(chalk.yellow("No users."));
+
           for (const u of data) console.log(`${chalk.gray(`#${u.id}`)} ${chalk.green(u.username)}`);
         },
       },
+      "create-room": {
+        help: "create-room <name> — create a new room",
+        run: async ([name]) => {
+          if (!name) throw new Error("Usage: create-room <name>");
+          const { data } = await this.ifClientPresent().createRoom(name);
+          console.log(chalk.green(`Room created: ${data.name} (#${data.id})`));
+        },
+      },
+      "add-participant": {
+        help: "add-participant <conversationId> <username> — add a participant to a room",
+        run: async ([conversationId, username]) => {
+          if ((!conversationId && !this.activeConversationId) || !username) throw new Error("Usage: add-participant <conversationId> <username>");
+          const { data } = await this.ifClientPresent().addRoomParticipant(Number(conversationId) || this.activeConversationId!, username);
+          console.log(chalk.green(`Participant added: ${data.username} (#${data.id})`));
+        },
+      },
+      dm: {
+        help: "dm <username> — create a new direct message",
+        run: async ([username]) => {
+          if (!username) throw new Error("Usage: create-dm <username>");
+          const { data } = await this.ifClientPresent().dmUser(username);
+          // console.log(chalk.green(`DM created: ${data.name} (#${data.id})`));
+          this.activeConversationId = data.id;
+          // this.activeConversationName = username;
+
+          this.activeConversationName = `DM#${username}`;
+        },
+      },
+
       conversations: {
         help: "List your conversations",
         run: async () => {
@@ -187,15 +220,17 @@ export default class Repl {
   }
   private async attachListener(): Promise<void> {
     if (!this.vinyClient) return;
+
     try {
       await this.vinyClient.connect();
       this.vinyClient.onMessage((msg) => {
+        console.log(msg);
         readline.cursorTo(process.stdout, 0);
         readline.clearLine(process.stdout, 0);
         const time = msg.timestamp.toLocaleTimeString();
         const inActive = msg.conversationId === this.activeConversationId;
-        const convLabel = inActive ? "" : chalk.gray(`[conv#${msg.conversationId}] `);
-        console.log(chalk.gray(`[${time}] `) + convLabel + chalk.cyan(`${msg.senderId}`) + chalk.gray(" › ") + msg.text);
+        const convLabel = inActive ? "" : chalk.gray(`[conv#${msg.conversationName}] `);
+        console.log(chalk.gray(`[${time}] `) + convLabel + chalk.cyan(`${msg.senderUsername}`) + chalk.gray(" › ") + msg.text);
         this.rl.prompt(true);
       });
     } catch (err) {

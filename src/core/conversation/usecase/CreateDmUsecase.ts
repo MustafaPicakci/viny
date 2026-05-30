@@ -5,7 +5,7 @@ import type Conversation from "../Conversation.js";
 import type ConversationPort from "../Conversationport.js";
 
 export interface CreateDMUsecaseInput extends AuthenticatedUsecaseInput {
-  peerUserId: number;
+  peerUsername: string;
 }
 
 export default class CreateDMUsecase implements Usecase<CreateDMUsecaseInput, Conversation> {
@@ -15,7 +15,7 @@ export default class CreateDMUsecase implements Usecase<CreateDMUsecaseInput, Co
   ) {}
 
   async handle(input: CreateDMUsecaseInput): Promise<Conversation> {
-    const peer = await this.userPort.findById(input.peerUserId);
+    const peer = await this.userPort.findByUsername(input.peerUsername);
     if (!peer) {
       throw new NotFoundException("Peer user not found");
     }

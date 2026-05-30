@@ -1,5 +1,5 @@
-import type Message from "../message/Message.js";
+import type { SendMessageResponse } from "../message/usecase/SendMessageUsecase.js";
 
 export default interface TransportPort {
-  transport(message: Message, recipients: number[]): Promise<void>;
+  transport(message: SendMessageResponse, recipients: number[]): Promise<void>;
 }

@@ -6,13 +6,14 @@ export interface SearchUserUsecasePayload extends AuthenticatedUsecaseInput {
   query: string;
   limit?: number;
 }
-export type SearchUserResponse = { users: Omit<User, "password">[] };
+
+export type SearchUserResponse = Omit<User, "password">[];
 
 export default class SearchUserUsecase {
   constructor(private userport: UserPort) {}
 
   async handle(payload: SearchUserUsecasePayload): Promise<SearchUserResponse> {
     const users = await this.userport.search(payload);
-    return { users: users.filter((u) => u.id !== payload.requestedBy) };
+    return users.filter((u) => u.id !== payload.requestedBy);
   }
 }

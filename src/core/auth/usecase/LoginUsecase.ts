@@ -6,8 +6,6 @@ import type UserPort from "../../user/UserPort.js";
 
 import type AuthenticationPort from "../AuthenticationPort.js";
 
-const expiresIn = 60 * 60 * 24; // 24 hour TODO Bunu envden al!
-
 export interface LoginRequest extends UsecaseInput {
   username: string;
   password: string;

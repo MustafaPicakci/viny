@@ -1,5 +1,5 @@
 import axios from "axios";
-import type Message from "../../core/message/Message.js";
+import type { SendMessageResponse } from "../../core/message/usecase/SendMessageUsecase.js";
 
 export type VinyClientOptions = {
   address: string;
@@ -7,7 +7,7 @@ export type VinyClientOptions = {
   token?: string;
 };
 
-export type MessageHandler = (message: Message) => void;
+export type MessageHandler = (message: SendMessageResponse) => void;
 export default class VinyClient {
   private static instance: VinyClient;
   private token: string | undefined;
@@ -36,17 +36,19 @@ export default class VinyClient {
   async login(username: string, password: string) {
     const { data } = await axios.post("/auth/login", { username, password });
     this.token = data.token;
-    // this.connectWebSocket();
+    axios.defaults.headers.common["Authorization"] = `Bearer ${this.token}`;
 
-    return data;
+    return { data };
   }
   private async connectWebSocket() {
     if (!this.token) {
       throw new Error("Not authenticated");
     }
+
     this.socket = new WebSocket(`ws://${this.options.address}:${this.options.port}/ws?token=${encodeURIComponent(this.token)}`);
     this.socket.onmessage = (event) => {
-      const message: Message = JSON.parse(event.data);
+      const raw = JSON.parse(event.data);
+      const message: SendMessageResponse = { ...raw, timestamp: new Date(raw.timestamp) };
       this.messageHandlers.forEach((handler) => handler(message));
     };
   }
@@ -59,6 +61,7 @@ export default class VinyClient {
   onMessage(handler: MessageHandler) {
     this.messageHandlers.add(handler);
   }
+
   async sendMessage(conversationId: number, text: string) {
     return axios.post(`/conversations/${conversationId}/messages`, { text });
   }
@@ -78,5 +81,14 @@ export default class VinyClient {
   }
   async fetchMessages(conversationId: number) {
     return axios.get(`/conversations/${conversationId}/messages`);
+  }
+  async createRoom(name: string) {
+    return axios.post("/room", { name });
+  }
+  async addRoomParticipant(conversationId: number, username: string) {
+    return axios.post(`/room/${conversationId}/participants`, { username });
+  }
+  async dmUser(username: string) {
+    return axios.post("/dm", { peerUsername: username });
   }
 }
