@@ -17,7 +17,6 @@ program
   .option("-p, --port <port>", "port", "4000")
   .option("-a, --address <address>", "bind address", "0.0.0.0")
   .option("-m, --mode <mode>", "local | cloud", "local")
-  .option("--sqlite-file <path>", "sqlite database path (LOCAL mode)")
   .action(async (opts) => {
     await serveCommand(opts);
   });

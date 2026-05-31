@@ -1,6 +1,6 @@
 import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
 
-import * as bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import type { IssuedToken, TokenPayload } from "../../core/auth/AuthenticationPort.js";
 

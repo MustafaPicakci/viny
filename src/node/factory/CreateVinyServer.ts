@@ -20,9 +20,10 @@ import MessageAdapter from "../message/MessageAdapter.js";
 import TransportAdapter from "../transport/TransportAdapter.js";
 
 export interface ServerOptions {
-  address?: string;
+  address: string;
   port: number;
   name: string;
+  mode: "LOCAL" | "CLOUD";
 }
 
 export interface VinyServerHandle {
@@ -39,7 +40,7 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
   const registry = new ConnectionRegistry();
   const transportAdapter = new TransportAdapter(registry);
   const server = new VinyServer({
-    port: 4000,
+    port: options.port || 4000,
     host: options.address || "0.0.0.0",
     registry,
     authenticationPort: authAdapter,

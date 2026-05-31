@@ -11,7 +11,7 @@ try {
   const { data } = await client.dmUser("mustafa");
   const conversationId = data.id;
   const response = await client.sendMessage(conversationId, "Hello from the test client!");
-  // console.log("Send message response:", response.data);
+  console.log("Send message response:", response.data);
 } catch (error: any) {
   console.error("An error occurred:", error.data || error.message || error);
 }

@@ -7,6 +7,7 @@ const vinyServer = await createVinyServer({
   port: 4000,
   address: "0.0.0.0",
   name: "My Viny Server",
+  mode: "LOCAL",
 });
 vinyServer.start();
 
