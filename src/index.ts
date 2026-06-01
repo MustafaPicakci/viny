@@ -1,37 +1,15 @@
-#!/usr/bin/env node
-import chalk from "chalk";
-import { Command } from "commander";
-import { loadConfig } from "./config.js";
-import { announceJoin, announceLeave, listenAnnouncements } from "./discovery.js";
+export type { default as Conversation } from "./core/conversation/Conversation.js";
+export type { Host } from "./core/host/Host.js";
+export type { default as Message } from "./core/message/Message.js";
+export type { default as SendMessageResponse } from "./core/message/usecase/SendMessageUsecase.js";
+export type { default as Session } from "./core/user/Session.js";
+export { default as VinyClient, type VinyClientOptions } from "./node/client/VinyClient.js";
+export { createVinyServer } from "./node/factory/CreateVinyServer.js";
 
-const program = new Command();
-
-const config = await loadConfig();
-
-config.username && console.log(chalk.green(`👋 Merhaba, ${config.username}!`));
-
-announceJoin();
-listenAnnouncements();
-// renderPeers();
-
-process.on("SIGINT", async () => {
-  await announceLeave(config.username);
-  console.log("yukarı");
-
-  process.exit(0);
-});
-
-process.on("SIGTERM", async () => {
-  console.log("aşağı");
-  await announceLeave(config.username);
-  process.exit(0);
-});
-
-// program
-//   .command("connect <accountName>")
-//   .description("Create a an account")
-//   .action((accountName) => {
-//     console.log(chalk.blue(`🚀 Launching ${accountName}...`));
-//   });
-
-// program.parse(process.argv);
+// const vinyServer = await createVinyServer({
+//   port: 4000,
+//   address: "0.0.0.0",
+//   name: "My Viny Server",
+//   mode: "LOCAL",
+// });
+// vinyServer.start();
