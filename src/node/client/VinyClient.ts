@@ -25,6 +25,11 @@ export default class VinyClient {
     }
     return VinyClient.instance;
   }
+
+  public static reset(options: VinyClientOptions): VinyClient {
+    this.instance = new VinyClient(options);
+    return VinyClient.instance;
+  }
   getToken(): string | undefined {
     return this.token;
   }
@@ -72,6 +77,10 @@ export default class VinyClient {
 
   async connect() {
     await this.connectWebSocket();
+  }
+
+  async ping(): Promise<void> {
+    await axios.get("/health", { timeout: 3000 });
   }
   async searchUsers(query: string) {
     return axios.get(`/users/search`, { params: { q: query } });

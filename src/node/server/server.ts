@@ -235,6 +235,9 @@ export default class VinyServer {
         next(err);
       }
     });
+    app.get("/api/health", async (_req, res) => {
+      res.status(200).json({ status: "ok" });
+    });
   }
 
   private async loadUser(userId: number) {

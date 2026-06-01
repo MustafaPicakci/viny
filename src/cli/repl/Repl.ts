@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import readline from "node:readline";
+
 import { createInterface } from "readline";
 import type { Host } from "../../core/host/Host.js";
 import type Session from "../../core/user/Session.js";
@@ -7,11 +8,12 @@ import VinyClient from "../../node/client/VinyClient.js";
 import { discoverCommand } from "../command/discoverCommand.js";
 
 type CommandHandler = (args: string[]) => Promise<void>;
+type Command = { run: CommandHandler; help: string };
 export default class Repl {
   private session?: Session;
   private host!: Host;
   private vinyClient!: VinyClient;
-  private commands!: Record<string, { run: CommandHandler; help: string }>;
+  private commands!: Record<string, Command>;
   private rl!: ReturnType<typeof createInterface>;
   private activeConversationId?: number;
   private activeConversationName?: string;
@@ -56,27 +58,36 @@ export default class Repl {
   private async drain(): Promise<void> {
     if (this.processing) return;
     this.processing = true;
+
     try {
       while (this.queue.length > 0) {
         const raw = this.queue.shift()!.trim();
         if (!raw) continue;
         const [name, ...args] = this.tokenize(raw);
-        const cmd = name ? this.commands[name] : undefined;
-        if (!cmd) {
-          if (this.activeConversationId !== undefined) {
+        if (this.activeConversationId !== undefined) {
+          if (name === "leave") {
             try {
-              await this.ifClientPresent().sendMessage(this.activeConversationId, raw);
-            } catch (err) {
-              console.log(chalk.red((err as Error).message));
+              await this.commands["leave"]!.run(args);
+            } catch (err: any) {
+              console.log(chalk.red(err.message));
             }
           } else {
-            console.log(chalk.red(`Unknown command: "${name}". Type "help".`));
+            try {
+              await this.ifClientPresent().sendMessage(this.activeConversationId, raw);
+            } catch (err: any) {
+              console.log(chalk.red(err.message));
+            }
           }
         } else {
-          try {
-            await cmd.run(args);
-          } catch (err) {
-            console.log(chalk.red((err as Error).message));
+          const cmd = name ? this.commands[name] : undefined;
+          if (!cmd) {
+            console.log(chalk.red(`Unknown command: "${name}". Type "help".`));
+          } else {
+            try {
+              await cmd.run(args);
+            } catch (err: any) {
+              console.log(chalk.red(err.message));
+            }
           }
         }
         this.rl.setPrompt(this.buildPrompt());
@@ -107,23 +118,33 @@ export default class Repl {
       console.log(`  ${chalk.cyan(name.padEnd(width))}  ${chalk.gray(this.commands[name]!.help)}`);
     }
   }
-  private buildCommands(): Record<string, { run: CommandHandler; help: string }> {
+  private buildCommands(): Record<string, Command> {
     return {
       help: { help: "Show available commands", run: async () => this.printHelp() },
       exit: { help: "Quit the REPL", run: async () => this.rl.close() },
       quit: { help: "Quit the REPL", run: async () => this.rl.close() },
+      leave: {
+        help: "Leave current conversation",
+        run: async () => {
+          if (!this.activeConversationId) throw new Error("Not in a conversation.");
+          delete this.activeConversationId;
+          delete this.activeConversationName;
+          console.log(chalk.gray("Left conversation."));
+        },
+      },
       discover: { help: "Discover Viny hosts on the local network", run: async () => discoverCommand() },
       use: {
         help: "use <address> <port>",
         run: async ([address, port]) => {
           try {
             if (!address || !port) throw new Error("Usage: use <address> <port>");
+            if (this.host) throw new Error("Already connected. Use 'logout' first.");
+            this.vinyClient = VinyClient.reset({ address, port: parseInt(port) });
+            await this.vinyClient.ping();
             this.host = { id: new Date().getTime().toString(), mode: "LOCAL", name: "", address, port: Number(port) };
-
-            this.vinyClient = VinyClient.getInstance({ address, port: parseInt(port) });
             console.log(chalk.green(`Connected to ${address}:${port}`));
-          } catch (err) {
-            console.log(chalk.red(`Connection failed: ${(err as Error).message}`));
+          } catch (err: any) {
+            console.log(chalk.red(`Connection failed: ${err.message}`));
           }
         },
       },
@@ -134,8 +155,8 @@ export default class Repl {
             if (!username || !password) throw new Error("Usage: register <username> <password>");
             const { data } = await this.ifClientPresent().register(username, password);
             console.log(chalk.green(`Registered ${data.username} (#${data.id})`));
-          } catch (err) {
-            console.log(chalk.red(`Registration failed: ${(err as Error).message}`));
+          } catch (err: any) {
+            console.log(chalk.red(`Registration failed: ${err.message}`));
           }
         },
       },
@@ -144,14 +165,14 @@ export default class Repl {
         run: async ([username, password]) => {
           try {
             if (!username || !password) throw new Error("Usage: login <username> <password>");
-
+            if (this.session) throw new Error("Already logged in. Use 'logout' first.");
             const { data } = await this.ifClientPresent().login(username, password);
 
             this.session = data;
             // console.log(chalk.green(`Logged in as ${data.username} (#${data.id})`));
             await this.attachListener();
-          } catch (err) {
-            console.log(chalk.red(`Login failed: ${(err as Error).message}`));
+          } catch (err: any) {
+            console.log(chalk.red(`Login failed: ${err.message}`));
           }
         },
       },
@@ -163,8 +184,8 @@ export default class Repl {
             delete this.session;
             if (this.host) this.vinyClient = VinyClient.getInstance({ address: this.host.address, port: this.host.port });
             console.log(chalk.gray("Logged out"));
-          } catch (err) {
-            console.log(chalk.red(`Logout failed: ${(err as Error).message}`));
+          } catch (err: any) {
+            console.log(chalk.red(`Logout failed: ${err.message}`));
           }
         },
       },
@@ -176,8 +197,8 @@ export default class Repl {
             if (data.length === 0) return console.log(chalk.yellow("No users."));
 
             for (const u of data) console.log(` ${chalk.green(u.username)}`);
-          } catch (err) {
-            console.log(chalk.red(`Search failed: ${(err as Error).message}`));
+          } catch (err: any) {
+            console.log(chalk.red(`Search failed: ${err.message}`));
           }
         },
       },
@@ -237,7 +258,7 @@ export default class Repl {
             const { data } = await this.ifClientPresent().listConversations();
             if (data.length === 0) return console.log(chalk.yellow("No conversations."));
             for (const c of data) {
-              const label = c.type === "DM" ? `${c.name}` : `Room "${c.name ?? ""}"`;
+              const label = c.type === "DM" ? `${c.name}` : `"${c.name ?? ""}"`;
               console.log(` ${chalk.cyan(c.type)} (${label})`);
             }
           } catch (error: any) {
@@ -277,8 +298,8 @@ export default class Repl {
         console.log(chalk.gray(`[${time}] `) + convLabel + chalk.cyan(`${msg.senderUsername}`) + chalk.gray(" › ") + msg.text);
         this.rl.prompt(true);
       });
-    } catch (err) {
-      console.log(chalk.yellow(`WS connect failed: ${(err as Error).message}`));
+    } catch (err: any) {
+      console.log(chalk.yellow(`WS connect failed: ${err.message}`));
     }
   }
 }
