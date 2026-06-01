@@ -1,5 +1,5 @@
 {
-  "name": "viny",
+  "name": "viny-cli",
   "version": "0.1.0",
   "description": "A simple messaging app works in local network",
   "main": "./dist/index.js",
