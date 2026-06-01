@@ -50,6 +50,67 @@ dm bob                   # open a direct message with bob
 leave                    # exit the conversation
 ```
 
+## Example walkthrough
+
+### Machine A — start the server
+
+```bash
+$ viny serve --name "office" --port 4000
+VinyServer listening on 0.0.0.0:4000
+```
+
+### Machine B — discover and connect
+
+```bash
+$ viny
+
+viny> [no-host] anonymous ›  discover
+Found: office  192.168.1.10:4000
+
+viny> [no-host] anonymous ›  use 192.168.1.10 4000
+Connected to 192.168.1.10:4000
+
+viny> [192.168.1.10:4000] anonymous ›  register alice p4ssword
+Registered alice (#1)
+
+viny> [192.168.1.10:4000] anonymous ›  login alice p4ssword
+```
+
+### Machine C — another user joins
+
+```bash
+$ viny
+
+viny> [no-host] anonymous ›  use 192.168.1.10 4000
+Connected to 192.168.1.10:4000
+
+viny> [192.168.1.10:4000] anonymous ›  register bob p4ssword
+Registered bob (#2)
+
+viny> [192.168.1.10:4000] anonymous ›  login bob p4ssword
+```
+
+### Machine B — send a DM
+
+```bash
+viny> [192.168.1.10:4000] alice ›  dm bob
+(no previous messages)
+
+viny> [192.168.1.10:4000] alice  DM#bob ›  hey bob, are you there?
+```
+
+### Machine C — bob receives and replies
+
+```bash
+# message appears instantly:
+[10:42:01] alice › hey bob, are you there?
+
+viny> [192.168.1.10:4000] bob ›  dm alice
+viny> [192.168.1.10:4000] bob  DM#alice ›  yes, loud and clear!
+```
+
+---
+
 ## Commands
 
 ### CLI
