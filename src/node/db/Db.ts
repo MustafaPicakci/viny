@@ -12,9 +12,6 @@ const config: Knex.Config = {
     filename: path.join(dbDir, "viny.db"),
   },
   useNullAsDefault: true,
-  migrations: {
-    directory: "./migrations",
-  },
 };
 
 const db = knex(config);

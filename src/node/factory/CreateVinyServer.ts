@@ -49,7 +49,7 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
       register: new RegisterUsecase(authAdapter, userAdapter),
       login: new LoginUsecase(authAdapter, userAdapter),
       searchUsers: new SearchUserUsecase(userAdapter),
-      listConversations: new ListConversationsUsecase(conversationAdapter),
+      listConversations: new ListConversationsUsecase(conversationAdapter, userAdapter),
       fetchMessages: new FetchMessagesUsecase(conversationAdapter, messageAdapter),
       createRoom: new CreateRoomUsecase(conversationAdapter),
       addRoomParticipant: new AddRoomParticipantUsecase(conversationAdapter, userAdapter),

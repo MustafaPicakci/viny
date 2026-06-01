@@ -74,7 +74,7 @@ export default class VinyClient {
     await this.connectWebSocket();
   }
   async searchUsers(query: string) {
-    return axios.get(`/users/search`, { params: { query } });
+    return axios.get(`/users/search`, { params: { q: query } });
   }
   async listConversations() {
     return axios.get("/conversations");

@@ -1,4 +1,4 @@
-export type HostMode = "LOCAL" | "CLOUD";
+export type HostMode = "LOCAL"; // | "CLOUD";
 
 export type Host = {
   id: string;

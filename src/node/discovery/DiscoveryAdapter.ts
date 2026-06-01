@@ -1,7 +1,7 @@
 import { Bonjour, type Browser, type Service } from "bonjour-service";
 
 import type DiscoveryPort from "../../core/discovery/discoveryPort.js";
-import type { Host } from "../../core/host/Host.js";
+import type { Host, HostMode } from "../../core/host/Host.js";
 
 const SERVICE_TYPE = "viny";
 export default class DiscoveryAdapter implements DiscoveryPort {
@@ -13,13 +13,13 @@ export default class DiscoveryAdapter implements DiscoveryPort {
     const hosts: Host[] = [];
 
     const browser: Browser = this.bonjour.find({ type: SERVICE_TYPE }, (service: Service) => {
-      const txt = (service.txt ?? {}) as { id?: string; mode?: string };
+      const txt = (service.txt ?? {}) as { id?: string; mode: HostMode };
       hosts.push({
         id: txt.id ?? `${service.name}_${service.port}`,
         name: service.name,
         port: service.port,
         address: service.referer?.address ?? "",
-        mode: txt.mode === "CLOUD" ? "CLOUD" : "LOCAL",
+        mode: txt.mode,
       });
     });
 

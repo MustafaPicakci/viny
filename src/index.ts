@@ -1,5 +1,10 @@
-// import VinyClient from "./node/client/VinyClient.js";
-// import DiscoveryAdapter from "./node/discovery/DiscoveryAdapter.js";
+export type { default as Conversation } from "./core/conversation/Conversation.js";
+export type { Host } from "./core/host/Host.js";
+export type { default as Message } from "./core/message/Message.js";
+export type { default as SendMessageResponse } from "./core/message/usecase/SendMessageUsecase.js";
+export type { default as Session } from "./core/user/Session.js";
+export { default as VinyClient, type VinyClientOptions } from "./node/client/VinyClient.js";
+export { createVinyServer } from "./node/factory/CreateVinyServer.js";
 
 import { createVinyServer } from "./node/factory/CreateVinyServer.js";
 
@@ -10,27 +15,3 @@ const vinyServer = await createVinyServer({
   mode: "LOCAL",
 });
 vinyServer.start();
-
-// // vinyServer.start();
-
-// try {
-//   console.log("Hello, World!");
-
-//   const client = VinyClient.getInstance({ address: "0.0.0.0", port: 4000 });
-
-//   //   const response = await client.register("username", "password");
-//   //   console.log("Registration response:", response.data);
-
-//   const loginResponse = await client.login("username", "password");
-//   console.log("Login response:", loginResponse.data);
-
-//   const discoveryAdapter = new DiscoveryAdapter();
-//   const x = await discoveryAdapter.discover();
-//   console.log("Discovered hosts:", x);
-//   await client.connect();
-
-//   //   const logoutResponse = await client.logout();
-//   //   console.log("Logout response:", logoutResponse.data);
-// } catch (error: any) {
-//   console.error("An error occurred:", error.data || error.message || error);
-// }
