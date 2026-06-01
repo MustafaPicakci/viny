@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import ConnectionRegistry from "../../core/transport/ConnectionRegistry.js";
 import AuthenticationAdapter from "../auth/AuthenticationAdapter.js";
 import db from "../db/Db.js";
@@ -33,7 +34,7 @@ export interface VinyServerHandle {
 }
 
 export async function createVinyServer(options: ServerOptions): Promise<VinyServerHandle> {
-  const authAdapter = new AuthenticationAdapter({ jwtSecret: "your-jwt-secret", tokenTtlSeconds: 60 * 60 * 24, bcryptSaltRounds: 10 });
+  const authAdapter = new AuthenticationAdapter({ jwtSecret: randomBytes(64).toString("hex"), tokenTtlSeconds: 60 * 60 * 24, bcryptSaltRounds: 10 });
   const userAdapter = new UserAdapter(db);
   const discoveryAdapter = new DiscoveryAdapter();
   const conversationAdapter = new ConversationAdapter(db);
