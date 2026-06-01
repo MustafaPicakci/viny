@@ -1,4 +1,6 @@
-import { Bonjour, type Browser, type Service } from "bonjour-service";
+import pkg from "bonjour-service";
+const { Bonjour } = pkg;
+import type { Browser, Service } from "bonjour-service";
 
 import type DiscoveryPort from "../../core/discovery/discoveryPort.js";
 import type { Host, HostMode } from "../../core/host/Host.js";
