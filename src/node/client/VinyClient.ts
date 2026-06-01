@@ -94,10 +94,14 @@ export default class VinyClient {
   async createRoom(name: string) {
     return axios.post("/room", { name });
   }
-  async addRoomParticipant(conversationId: number, username: string) {
-    return axios.post(`/room/${conversationId}/participants`, { username });
+  async addRoomParticipant(roomName: string, username: string) {
+    return axios.post(`/room/${roomName}/participants`, { username });
   }
   async dmUser(username: string) {
     return axios.post("/dm", { peerUsername: username });
+  }
+
+  async getRoomParticipants(name: string) {
+    return axios.get(`/room/${encodeURIComponent(name)}/participants`);
   }
 }

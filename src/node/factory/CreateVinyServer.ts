@@ -8,6 +8,7 @@ import UserAdapter from "../user/UserAdapter.js";
 import LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
 import RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import AddRoomParticipantUsecase from "../../core/conversation/usecase/AddRoomParticioantUsecase.js";
+import GetRoomParticipantsUsecase from "../../core/conversation/usecase/GetRoomParticipantsUsecase.js";
 import CreateDMUsecase from "../../core/conversation/usecase/CreateDmUsecase.js";
 import CreateRoomUsecase from "../../core/conversation/usecase/CreateRoomUsecase.js";
 import JoinRoomUsecase from "../../core/conversation/usecase/JoinRoomUsecase.js";
@@ -53,6 +54,7 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
       fetchMessages: new FetchMessagesUsecase(conversationAdapter, messageAdapter),
       createRoom: new CreateRoomUsecase(conversationAdapter),
       addRoomParticipant: new AddRoomParticipantUsecase(conversationAdapter, userAdapter),
+      getRoomParticipants: new GetRoomParticipantsUsecase(conversationAdapter, userAdapter),
       joinRoom: new JoinRoomUsecase(conversationAdapter),
       createDM: new CreateDMUsecase(userAdapter, conversationAdapter),
       sendMessage: new SendMessageUsecase(conversationAdapter, messageAdapter, userAdapter, transportAdapter),

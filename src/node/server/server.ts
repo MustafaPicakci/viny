@@ -5,12 +5,14 @@ import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
+import type ConversationPort from "../../core/conversation/Conversationport.js";
 import type LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
 import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import DuplicateException from "../../core/common/exception/DuplicateException.js";
 import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
 import type AddRoomParticipantUsecase from "../../core/conversation/usecase/AddRoomParticioantUsecase.js";
+import type GetRoomParticipantsUsecase from "../../core/conversation/usecase/GetRoomParticipantsUsecase.js";
 import type CreateDMUsecase from "../../core/conversation/usecase/CreateDmUsecase.js";
 import type CreateRoomUsecase from "../../core/conversation/usecase/CreateRoomUsecase.js";
 import type JoinRoomUsecase from "../../core/conversation/usecase/JoinRoomUsecase.js";
@@ -39,6 +41,7 @@ export interface VinyServerOptions {
     createRoom: CreateRoomUsecase;
     joinRoom: JoinRoomUsecase;
     addRoomParticipant: AddRoomParticipantUsecase;
+    getRoomParticipants: GetRoomParticipantsUsecase;
     sendMessage: SendMessageUsecase;
     listConversations: ListConversationsUsecase;
     fetchMessages: FetchMessagesUsecase;
@@ -224,13 +227,22 @@ export default class VinyServer {
         next(err);
       }
     });
-    app.post("/api/room/:id/participants", requireAuth, async (req: AuthedRequest, res, next) => {
+    app.post("/api/room/:name/participants", requireAuth, async (req: AuthedRequest, res, next) => {
       try {
         const requestedBy = await this.loadUser(req.userId!);
-        const { name } = req.body;
+        const { username } = req.body;
 
-        const conversation = await usecases.addRoomParticipant.handle({ requestedBy: requestedBy.id, conversationId: Number(req.params.id), username: name });
+        const conversation = await usecases.addRoomParticipant.handle({ requestedBy: requestedBy.id, name: req.params.name as string, username });
         res.status(200).json(conversation);
+      } catch (err) {
+        next(err);
+      }
+    });
+    app.get("/api/room/:name/participants", requireAuth, async (req: AuthedRequest, res, next) => {
+      try {
+        const requestedBy = await this.loadUser(req.userId!);
+        const users = await usecases.getRoomParticipants.handle({ requestedBy: requestedBy.id, name: req.params.name as string });
+        res.status(200).json(users);
       } catch (err) {
         next(err);
       }

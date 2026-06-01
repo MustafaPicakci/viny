@@ -6,7 +6,7 @@ import type Conversation from "../Conversation.js";
 import type ConversationPort from "../Conversationport.js";
 
 export interface AddRoomParticipantUsecaseInput extends AuthenticatedUsecaseInput {
-  conversationId: number;
+  name: string; //fake room name
   username: string;
 }
 
@@ -17,10 +17,11 @@ export default class AddRoomParticipantUsecase implements Usecase<AddRoomPartici
   ) {}
 
   async handle(input: AddRoomParticipantUsecaseInput): Promise<Conversation> {
-    const conversation = await this.conversationPort.findById(input.conversationId);
+    const { requestedBy } = input;
+    const conversation = await this.conversationPort.findByName(input.name);
     if (!conversation) throw new NotFoundException("Conversation not found");
-    if (conversation.type !== "GROUP") {
-      throw new UnauthorizedException("Only group conversations can be joined");
+    if (conversation.type !== "GROUP" || conversation.participants?.[0]?.toString() !== requestedBy.toString()) {
+      throw new UnauthorizedException("You are not able to add participants to this conversation");
     }
     const user = await this.userPort.findByUsername(input.username);
     if (!user) {
@@ -28,7 +29,7 @@ export default class AddRoomParticipantUsecase implements Usecase<AddRoomPartici
     }
 
     //!bu threadsafe değil! bir ara bak
-    await this.conversationPort.addParticipant(conversation.id, input.requestedBy);
+    await this.conversationPort.addParticipant(conversation.id, user.id);
     return conversation;
   }
 }

@@ -110,6 +110,13 @@ export default class Repl {
     return this.vinyClient;
   }
 
+  private resolveError(err: any): string {
+    const data = err?.response?.data;
+    if (!data) return err?.message ?? String(err);
+    if (typeof data === "string") return data;
+    return data.message ?? data.error ?? JSON.stringify(data);
+  }
+
   private printHelp(): void {
     console.log(chalk.bold("Commands:"));
     const names = Object.keys(this.commands).sort();
@@ -202,6 +209,20 @@ export default class Repl {
           }
         },
       },
+      "show-participants": {
+        help: "show-participants <groupName> — list members of a room",
+        run: async ([groupName]) => {
+          try {
+            const name = groupName || this.activeConversationName;
+            if (!name) throw new Error("Usage: show-participants <groupName>");
+            const { data } = await this.ifClientPresent().getRoomParticipants(name);
+            if (data.length === 0) return console.log(chalk.yellow("No participants."));
+            for (const u of data) console.log(` ${chalk.green(u.username)}`);
+          } catch (error: any) {
+            console.log(chalk.red(this.resolveError(error)));
+          }
+        },
+      },
       "create-room": {
         help: "create-room <name> — create a new room",
         run: async ([name]) => {
@@ -210,19 +231,19 @@ export default class Repl {
             const { data } = await this.ifClientPresent().createRoom(name);
             console.log(chalk.green(`Room created: ${data.name} (#${data.id})`));
           } catch (error: any) {
-            console.error(chalk.red(error.message));
+            console.log(chalk.red(this.resolveError(error)));
           }
         },
       },
       "add-participant": {
-        help: "add-participant <conversationId> <username> — add a participant to a room",
-        run: async ([conversationId, username]) => {
+        help: "add-participant <groupName> <username> — add a participant to a room",
+        run: async ([groupName, username]) => {
           try {
-            if ((!conversationId && !this.activeConversationId) || !username) throw new Error("Usage: add-participant <conversationId> <username>");
-            const { data } = await this.ifClientPresent().addRoomParticipant(Number(conversationId) || this.activeConversationId!, username);
-            console.log(chalk.green(`Participant added: ${data.username} (#${data.id})`));
+            if ((!groupName && !this.activeConversationId) || !username) throw new Error("Usage: add-participant <groupName> <username>");
+            const { data } = await this.ifClientPresent().addRoomParticipant(groupName || this.activeConversationName!, username);
+            console.log(chalk.green(`Participant added: ${username} (#${data.id})`));
           } catch (error: any) {
-            console.error(chalk.red(error.message));
+            console.log(chalk.red(this.resolveError(error)));
           }
         },
       },
@@ -246,7 +267,7 @@ export default class Repl {
               }
             }
           } catch (error: any) {
-            console.error(chalk.red(error.message));
+            console.log(chalk.red(this.resolveError(error)));
           }
         },
       },
@@ -262,7 +283,7 @@ export default class Repl {
               console.log(` ${chalk.cyan(c.type)} (${label})`);
             }
           } catch (error: any) {
-            console.error(chalk.red(error.message));
+            console.log(chalk.red(this.resolveError(error)));
           }
         },
       },
@@ -278,7 +299,7 @@ export default class Repl {
               console.log(chalk.gray(`[${m.createdAt.toLocaleString()}]`) + ` ${chalk.cyan(`user:${m.senderId}`)} → ${m.text}`);
             }
           } catch (error: any) {
-            console.error(chalk.red(error.message));
+            console.log(chalk.red(this.resolveError(error)));
           }
         },
       },
