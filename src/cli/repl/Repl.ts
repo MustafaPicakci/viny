@@ -44,7 +44,7 @@ export default class Repl {
 
   private buildPrompt(): string {
     const host = this.host ? `${this.host.address}:${this.host.port}` : "no-host";
-    const user = this.session?.username ?? "anonmous";
+    const user = this.session?.username ?? "anonymous";
     const conv = this.activeConversationId !== undefined ? chalk.yellow(` ${this.activeConversationName ?? `#${this.activeConversationId}`}`) : "";
     return chalk.gray(`viny> [${host}] `) + chalk.cyan(user) + conv + chalk.gray(" › ");
   }
