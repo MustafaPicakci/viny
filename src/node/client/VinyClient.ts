@@ -12,7 +12,8 @@ export default class VinyClient {
   private static instance: VinyClient;
   private token: string | undefined;
   private socket?: WebSocket;
-  private readonly messageHandlers = new Set<MessageHandler>();
+  // private readonly messageHandlers = new Set<MessageHandler>();
+  private messageHandler?: MessageHandler;
 
   private constructor(private readonly options: VinyClientOptions) {
     axios.defaults.baseURL = `http://${options.address}:${options.port}/api`;
@@ -54,7 +55,7 @@ export default class VinyClient {
     this.socket.onmessage = (event) => {
       const raw = JSON.parse(event.data);
       const message: SendMessageResponse = { ...raw, timestamp: new Date(raw.timestamp) };
-      this.messageHandlers.forEach((handler) => handler(message));
+      this.messageHandler?.(message);
     };
   }
 
@@ -64,7 +65,7 @@ export default class VinyClient {
     delete this.socket;
   }
   onMessage(handler: MessageHandler) {
-    this.messageHandlers.add(handler);
+    this.messageHandler = handler;
   }
 
   async sendMessage(conversationId: number, text: string) {
