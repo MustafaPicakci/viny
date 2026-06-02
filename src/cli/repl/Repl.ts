@@ -319,6 +319,7 @@ export default class Repl {
         const time = msg.timestamp.toLocaleTimeString();
         const inActive = msg.conversationId === this.activeConversationId;
         const convLabel = inActive ? "" : chalk.gray(`[conv#${msg.conversationName}] `);
+        process.stdout.write("\x07");
         console.log(chalk.gray(`[${time}] `) + convLabel + chalk.cyan(`${msg.senderUsername}`) + chalk.gray(" › ") + msg.text);
         this.rl.prompt(true);
       });

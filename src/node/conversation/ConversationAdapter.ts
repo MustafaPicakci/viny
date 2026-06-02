@@ -20,12 +20,13 @@ export default class ConversationAdapter implements ConversationPort {
   }
 
   async create(conversation: Omit<Conversation, "id">): Promise<Conversation> {
-    const [id] = await this.db("conversations")
+    const [row] = await this.db("conversations")
       .insert({
         ...conversation,
         participants: JSON.stringify(conversation.participants),
       })
       .returning("id");
+    const id = typeof row === "object" ? row.id : row;
     return { ...conversation, id } as Conversation;
   }
 

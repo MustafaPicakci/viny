@@ -5,7 +5,8 @@ import type { Db } from "../db/Db.js";
 export default class MessageAdapter implements MessagePort {
   constructor(private readonly db: Db) {}
   async create(message: Message): Promise<Message> {
-    const [id] = await this.db("messages").insert(message).returning("id");
+    const [row] = await this.db("messages").insert(message).returning("id");
+    const id = typeof row === "object" ? row.id : row;
     return { ...message, id } as Message;
   }
   async findByConversationId(conversationId: number): Promise<Message[]> {

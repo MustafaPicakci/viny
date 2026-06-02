@@ -7,7 +7,7 @@ A local-network messaging CLI. Run a server on one machine, connect from others 
 ## Install
 
 ```bash
-npm install -g viny
+npm install -g viny-cli
 ```
 
 ## Quick start
@@ -125,7 +125,7 @@ viny discover                 Discover Viny servers on the local network
 
 | Command | Description |
 |---|---|
-| `use <address> <port>` | Connect to a Viny server |
+| `use <address> [port]` | Connect to a Viny server (port optional for URLs) |
 | `register <username> <password>` | Create an account |
 | `login <username> <password>` | Log in |
 | `logout` | Log out |
@@ -145,7 +145,7 @@ viny discover                 Discover Viny servers on the local network
 You can also embed a Viny server or use the client programmatically:
 
 ```ts
-import { createVinyServer, VinyClient } from "viny";
+import { createVinyServer, VinyClient } from "viny-cli";
 
 // Start a server
 const server = await createVinyServer({ port: 4000, address: "0.0.0.0", name: "my-server", mode: "LOCAL" });
@@ -156,10 +156,26 @@ const client = VinyClient.getInstance({ address: "localhost", port: 4000 });
 await client.login("alice", "secret");
 ```
 
+## Connecting over the internet (ngrok)
+
+By default viny works on a local network. To expose a server publicly, use ngrok's HTTP tunnel — it provides HTTPS automatically, which prevents ISP-level interception:
+
+```bash
+ngrok http 4000
+# → https://abc123.ngrok-free.app
+```
+
+Then connect with the full URL (no port needed):
+
+```
+use https://abc123.ngrok-free.app
+```
+
 ## Requirements
 
 - Node.js 20+
-- All devices must be on the same local network
+- Local network usage: all devices on the same network
+- Internet usage: a tunnel (ngrok) or a VPS
 
 ## License
 

@@ -13,7 +13,8 @@ export default class UserAdapter implements UserPort {
     return q as Promise<Omit<User, "password">[]>;
   }
   async create(user: User): Promise<User> {
-    const [id] = await this.db("users").insert(user).returning("id");
+    const [row] = await this.db("users").insert(user).returning("id");
+    const id = typeof row === "object" ? row.id : row;
     return { ...user, id } as User;
   }
   async findByUsername(username: string): Promise<User> {
