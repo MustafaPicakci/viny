@@ -1,20 +1,18 @@
-// import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { rateLimit } from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
-// import http from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
-import type ConversationPort from "../../core/conversation/Conversationport.js";
 import type LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
 import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import DuplicateException from "../../core/common/exception/DuplicateException.js";
 import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
 import type AddRoomParticipantUsecase from "../../core/conversation/usecase/AddRoomParticioantUsecase.js";
-import type GetRoomParticipantsUsecase from "../../core/conversation/usecase/GetRoomParticipantsUsecase.js";
 import type CreateDMUsecase from "../../core/conversation/usecase/CreateDmUsecase.js";
 import type CreateRoomUsecase from "../../core/conversation/usecase/CreateRoomUsecase.js";
+import type GetRoomParticipantsUsecase from "../../core/conversation/usecase/GetRoomParticipantsUsecase.js";
 import type JoinRoomUsecase from "../../core/conversation/usecase/JoinRoomUsecase.js";
 import type ListConversationsUsecase from "../../core/conversation/usecase/ListConversationsUsecase.js";
 import type FetchMessagesUsecase from "../../core/message/usecase/FetchMessagesUsecase.js";
@@ -48,17 +46,25 @@ export interface VinyServerOptions {
   };
 }
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  ipv6Subnet: 56,
+  message: "Too many requests, please try again later.",
+});
 export default class VinyServer {
   private app?: Express;
   private httpServer?: HttpServer;
   private wsServer?: WebSocketServer;
-  // private readonly host?: Host;
 
   constructor(private options: VinyServerOptions) {}
 
   start(): Promise<void> {
     this.app = express();
     this.app.use(express.json());
+    this.app.use(limiter);
     this.registerRoutes(this.app);
 
     this.httpServer = createServer(this.app);

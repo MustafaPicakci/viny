@@ -154,7 +154,7 @@ export default class Repl {
             this.host = { id: new Date().getTime().toString(), mode: "LOCAL", name: "", address, port: port ? Number(port) : 443 };
             console.log(chalk.green(`Connected to ${address}`));
           } catch (err: any) {
-            console.log(chalk.red(`Connection failed: ${err.message}`));
+            console.log(chalk.red(`Connection failed: ${this.resolveError(err)}`));
           }
         },
       },
@@ -166,7 +166,7 @@ export default class Repl {
             const { data } = await this.ifClientPresent().register(username, password);
             console.log(chalk.green(`Registered ${data.username} (#${data.id})`));
           } catch (err: any) {
-            console.log(chalk.red(`Registration failed: ${err.message}`));
+            console.log(chalk.red(`Registration failed: ${this.resolveError(err)}`));
           }
         },
       },
@@ -182,7 +182,7 @@ export default class Repl {
             // console.log(chalk.green(`Logged in as ${data.username} (#${data.id})`));
             await this.attachListener();
           } catch (err: any) {
-            console.log(chalk.red(`Login failed: ${err.message}`));
+            console.log(chalk.red(`Login failed: ${this.resolveError(err)}`));
           }
         },
       },
@@ -195,7 +195,7 @@ export default class Repl {
             if (this.host) this.vinyClient = VinyClient.getInstance({ address: this.host.address, port: this.host.port });
             console.log(chalk.gray("Logged out"));
           } catch (err: any) {
-            console.log(chalk.red(`Logout failed: ${err.message}`));
+            console.log(chalk.red(`Logout failed: ${this.resolveError(err)}`));
           }
         },
       },
@@ -208,7 +208,7 @@ export default class Repl {
 
             for (const u of data) console.log(` ${chalk.green(u.username)}`);
           } catch (err: any) {
-            console.log(chalk.red(`Search failed: ${err.message}`));
+            console.log(chalk.red(`Search failed: ${this.resolveError(err)}`));
           }
         },
       },
