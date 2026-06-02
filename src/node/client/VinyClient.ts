@@ -3,7 +3,7 @@ import type { SendMessageResponse } from "../../core/message/usecase/SendMessage
 
 export type VinyClientOptions = {
   address: string;
-  port: number;
+  port?: number;
   token?: string;
 };
 
@@ -15,8 +15,20 @@ export default class VinyClient {
   // private readonly messageHandlers = new Set<MessageHandler>();
   private messageHandler?: MessageHandler;
 
-  private constructor(private readonly options: VinyClientOptions) {
-    axios.defaults.baseURL = `http://${options.address}:${options.port}/api`;
+  private readonly baseUrl: string;
+  private readonly wsUrl: string;
+
+  private constructor(options: VinyClientOptions) {
+    const isUrl = options.address.startsWith("http://") || options.address.startsWith("https://");
+    if (isUrl) {
+      const base = options.address.replace(/\/$/, "");
+      this.baseUrl = `${base}/api`;
+      this.wsUrl = base.replace(/^http/, "ws");
+    } else {
+      this.baseUrl = `http://${options.address}:${options.port}/api`;
+      this.wsUrl = `ws://${options.address}:${options.port}`;
+    }
+    axios.defaults.baseURL = this.baseUrl;
     this.token = options.token;
   }
 
@@ -51,7 +63,7 @@ export default class VinyClient {
       throw new Error("Not authenticated");
     }
 
-    this.socket = new WebSocket(`ws://${this.options.address}:${this.options.port}/ws?token=${encodeURIComponent(this.token)}`);
+    this.socket = new WebSocket(`${this.wsUrl}/ws?token=${encodeURIComponent(this.token)}`);
     this.socket.onmessage = (event) => {
       const raw = JSON.parse(event.data);
       const message: SendMessageResponse = { ...raw, timestamp: new Date(raw.timestamp) };

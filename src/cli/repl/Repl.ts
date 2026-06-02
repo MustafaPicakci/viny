@@ -141,15 +141,18 @@ export default class Repl {
       },
       discover: { help: "Discover Viny hosts on the local network", run: async () => discoverCommand() },
       use: {
-        help: "use <address> <port>",
+        help: "use <address> [port]  — port optional for URLs (e.g. use https://abc.ngrok-free.app)",
         run: async ([address, port]) => {
           try {
-            if (!address || !port) throw new Error("Usage: use <address> <port>");
+            if (!address) throw new Error("Usage: use <address> [port]");
+            const isUrl = address.startsWith("http://") || address.startsWith("https://");
+            if (!isUrl && !port) throw new Error("Usage: use <address> <port>");
             if (this.host) throw new Error("Already connected. Use 'logout' first.");
-            this.vinyClient = VinyClient.reset({ address, port: parseInt(port) });
+            const parsedPort = port ? parseInt(port) : undefined;
+            this.vinyClient = VinyClient.reset(parsedPort !== undefined ? { address, port: parsedPort } : { address });
             await this.vinyClient.ping();
-            this.host = { id: new Date().getTime().toString(), mode: "LOCAL", name: "", address, port: Number(port) };
-            console.log(chalk.green(`Connected to ${address}:${port}`));
+            this.host = { id: new Date().getTime().toString(), mode: "LOCAL", name: "", address, port: port ? Number(port) : 443 };
+            console.log(chalk.green(`Connected to ${address}`));
           } catch (err: any) {
             console.log(chalk.red(`Connection failed: ${err.message}`));
           }
