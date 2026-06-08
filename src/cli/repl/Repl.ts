@@ -250,6 +250,26 @@ export default class Repl {
           }
         },
       },
+      "enter-room": {
+        help: "enter-room <groupName> — enter a room to send messages",
+        run: async ([groupName]) => {
+          try {
+            const name = groupName || this.activeConversationName;
+            if (!name) throw new Error("Usage: enter-room <groupName>");
+
+            const { data } = await this.ifClientPresent().listConversations();
+
+            const conv = data.find((c: any) => c.type === "GROUP" && c.name === name);
+
+            if (!conv) throw new Error(`No such room: ${name}`);
+            this.activeConversationId = conv.id;
+            this.activeConversationName = conv.name;
+            console.log(chalk.gray(`Entered room "${conv.name}". Type messages to send.`));
+          } catch (error: any) {
+            console.log(chalk.red(this.resolveError(error)));
+          }
+        },
+      },
       dm: {
         help: "dm <username> — create a new direct message",
         run: async ([username]) => {

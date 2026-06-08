@@ -123,22 +123,23 @@ viny discover                 Discover Viny servers on the local network
 
 ### REPL
 
-| Command | Description |
-|---|---|
-| `use <address> [port]` | Connect to a Viny server (port optional for URLs) |
-| `register <username> <password>` | Create an account |
-| `login <username> <password>` | Log in |
-| `logout` | Log out |
-| `dm <username>` | Open a direct message |
-| `create-room <name>` | Create a group room |
-| `add-participant <room> <username>` | Add a user to a room |
-| `show-participants <room>` | List members of a room |
-| `conversations` | List your conversations |
-| `users <query>` | Search users |
-| `discover` | Discover servers on the network |
-| `leave` | Leave the active conversation |
-| `help` | Show available commands |
-| `exit` | Quit |
+| Command                             | Description                                       |
+| ----------------------------------- | ------------------------------------------------- |
+| `use <address> [port]`              | Connect to a Viny server (port optional for URLs) |
+| `register <username> <password>`    | Create an account                                 |
+| `login <username> <password>`       | Log in                                            |
+| `logout`                            | Log out                                           |
+| `dm <username>`                     | Open a direct message                             |
+| `create-room <name>`                | Create a group room                               |
+| `enter-room <name>`                 | Enter a room                                      |
+| `add-participant <room> <username>` | Add a user to a room                              |
+| `show-participants <room>`          | List members of a room                            |
+| `conversations`                     | List your conversations                           |
+| `users <query>`                     | Search users                                      |
+| `discover`                          | Discover servers on the network                   |
+| `leave`                             | Leave the active conversation                     |
+| `help`                              | Show available commands                           |
+| `exit`                              | Quit                                              |
 
 ## SDK usage
 
