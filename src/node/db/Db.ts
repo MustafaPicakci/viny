@@ -30,6 +30,7 @@ async function initSchema() {
       table.increments("id").primary();
       table.string("name").nullable();
       table.json("participants").notNullable();
+      table.string("type").notNullable(); // "GROUP" veya "DM"
     });
   }
 
