@@ -1,3 +1,4 @@
+import ForbiddenException from "../../common/exception/ForbiddenException.js";
 import NotFoundException from "../../common/exception/NotFoundException.js";
 import type { AuthenticatedUsecaseInput } from "../../common/Usecase.js";
 import type ConversationPort from "../../conversation/Conversationport.js";
@@ -30,6 +31,9 @@ export default class SendMessageUsecase {
 
     if (!conversation) {
       throw new NotFoundException("Conversation not found");
+    }
+    if (!conversation.participants.includes(payload.requestedBy)) {
+      throw new ForbiddenException("You are not a participant of this conversation");
     }
     const sender = await this.userPort.findById(payload.senderId);
 

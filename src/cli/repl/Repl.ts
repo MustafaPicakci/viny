@@ -265,6 +265,17 @@ export default class Repl {
             this.activeConversationId = conv.id;
             this.activeConversationName = conv.name;
             console.log(chalk.gray(`Entered room "${conv.name}". Type messages to send.`));
+
+            const { data: messages } = await this.ifClientPresent().fetchMessages(conv.id);
+            if (messages.length === 0) {
+              console.log(chalk.gray("(no previous messages)"));
+            } else {
+              for (const m of messages) {
+                const time = new Date(m.timestamp ?? m.createdAt).toLocaleString();
+                const user = m.senderId === this.session?.userId ? this.session?.username : `user#${m.senderId}`;
+                console.log(chalk.gray(`[${time}] `) + chalk.cyan(`${user}`) + chalk.gray(" › ") + m.text);
+              }
+            }
           } catch (error: any) {
             console.log(chalk.red(this.resolveError(error)));
           }

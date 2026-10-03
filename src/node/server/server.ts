@@ -7,6 +7,7 @@ import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
 import type LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
 import type RegisterUsecase from "../../core/auth/usecase/RegisterUsecase.js";
 import DuplicateException from "../../core/common/exception/DuplicateException.js";
+import ForbiddenException from "../../core/common/exception/ForbiddenException.js";
 import NotFoundException from "../../core/common/exception/NotFoundException.js";
 import UnauthorizedException from "../../core/common/exception/UnauthorizedException.js";
 import type AddRoomParticipantUsecase from "../../core/conversation/usecase/AddRoomParticioantUsecase.js";
@@ -85,6 +86,7 @@ export default class VinyServer {
       if (err instanceof DuplicateException) return res.status(409).json({ error: err.message });
       if (err instanceof NotFoundException) return res.status(404).json({ error: err.message });
       if (err instanceof UnauthorizedException) return res.status(401).json({ error: err.message });
+      if (err instanceof ForbiddenException) return res.status(403).json({ error: err.message });
       console.error(err);
       res.status(500).json({ error: "Internal server error" });
     });
