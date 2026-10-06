@@ -29,6 +29,9 @@ program
   .option("-p, --port <port>", "port", "4000")
   .option("-a, --address <address>", "bind address", "0.0.0.0")
   .option("-m, --mode <mode>", "local | cloud", "local")
+  .option("--tls-cert <path>", "TLS certificate chain in PEM (e.g. Let's Encrypt fullchain.pem); defaults to a self-signed certificate")
+  .option("--tls-key <path>", "private key in PEM for --tls-cert")
+  .option("--no-tls", "serve plain HTTP (only behind a proxy that terminates TLS)")
   .action(async (opts) => {
     await displayAppName();
     await serveCommand(opts);

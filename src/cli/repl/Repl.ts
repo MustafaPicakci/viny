@@ -5,6 +5,8 @@ import { createInterface } from "readline";
 import type { Host } from "../../core/host/Host.js";
 import type Session from "../../core/user/Session.js";
 import VinyClient from "../../node/client/VinyClient.js";
+import KnownHosts from "../../node/tls/KnownHosts.js";
+import type { UnknownCertificate } from "../../node/tls/TlsTrust.js";
 import { discoverCommand } from "../command/discoverCommand.js";
 
 type CommandHandler = (args: string[]) => Promise<void>;
@@ -141,7 +143,7 @@ export default class Repl {
       },
       discover: { help: "Discover Viny hosts on the local network", run: async () => discoverCommand() },
       use: {
-        help: "use <address> [port]  — port optional for URLs (e.g. use https://abc.ngrok-free.app)",
+        help: "use <address> [port]  — TLS by default; port optional for URLs (e.g. use https://chat.example.com, use http://... for unencrypted)",
         run: async ([address, port]) => {
           try {
             if (!address) throw new Error("Usage: use <address> [port]");
@@ -149,13 +151,23 @@ export default class Repl {
             if (!isUrl && !port) throw new Error("Usage: use <address> <port>");
             if (this.host) throw new Error("Already connected. Use 'logout' first.");
             const parsedPort = port ? parseInt(port) : undefined;
-            this.vinyClient = VinyClient.reset(parsedPort !== undefined ? { address, port: parsedPort } : { address });
+            const onUnknownCertificate = (cert: UnknownCertificate) => this.confirmCertificate(cert);
+            this.vinyClient = VinyClient.reset(parsedPort !== undefined ? { address, port: parsedPort, onUnknownCertificate } : { address, onUnknownCertificate });
             await this.vinyClient.ping();
             this.host = { id: new Date().getTime().toString(), mode: "LOCAL", name: "", address, port: port ? Number(port) : 443 };
-            console.log(chalk.green(`Connected to ${address}`));
+            if (this.vinyClient.isEncrypted()) console.log(chalk.green(`Connected to ${address} (encrypted)`));
+            else console.log(chalk.yellow(`Connected to ${address} — UNENCRYPTED, messages and passwords are sent in plain text`));
           } catch (err: any) {
             console.log(chalk.red(`Connection failed: ${this.resolveError(err)}`));
           }
+        },
+      },
+      "forget-host": {
+        help: "forget-host <address> <port> — remove a trusted self-signed certificate",
+        run: async ([address, port]) => {
+          if (!address || !port) throw new Error("Usage: forget-host <address> <port>");
+          if (KnownHosts.remove(address, Number(port))) console.log(chalk.gray(`Forgot certificate of ${address}:${port}.`));
+          else console.log(chalk.yellow(`No trusted certificate for ${address}:${port}.`));
         },
       },
       register: {
@@ -339,6 +351,18 @@ export default class Repl {
       },
     };
   }
+  private ask(question: string): Promise<string> {
+    return new Promise((resolve) => this.rl.question(question, resolve));
+  }
+
+  private async confirmCertificate(cert: UnknownCertificate): Promise<boolean> {
+    console.log(chalk.yellow(`The authenticity of ${cert.host}:${cert.port} can't be established (self-signed certificate "${cert.subject}").`));
+    console.log(`SHA-256 fingerprint: ${chalk.bold(cert.fingerprint256)}`);
+    console.log(chalk.gray("Compare it with the fingerprint printed by 'viny serve' on the server."));
+    const answer = (await this.ask("Trust this host? (yes/no) ")).trim().toLowerCase();
+    return answer === "yes" || answer === "y";
+  }
+
   private async attachListener(): Promise<void> {
     if (!this.vinyClient) return;
 

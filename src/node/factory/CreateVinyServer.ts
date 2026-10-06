@@ -4,6 +4,7 @@ import AuthenticationAdapter from "../auth/AuthenticationAdapter.js";
 import db from "../db/Db.js";
 import DiscoveryAdapter from "../discovery/DiscoveryAdapter.js";
 import VinyServer from "../server/server.js";
+import { loadServerCertificate } from "../tls/ServerCertificate.js";
 import UserAdapter from "../user/UserAdapter.js";
 
 import LoginUsecase from "../../core/auth/usecase/LoginUsecase.js";
@@ -26,11 +27,14 @@ export interface ServerOptions {
   port: number;
   name: string;
   mode: "LOCAL" | "CLOUD";
+  /** false: plain HTTP. Omitted: self-signed certificate for LAN use. Files: the given certificate. */
+  tls?: false | { certPath: string; keyPath: string };
 }
 
 export interface VinyServerHandle {
   stop(): Promise<void>;
   start(): VinyServer;
+  tls: { selfSigned: boolean; fingerprint256: string } | null;
 }
 
 export async function createVinyServer(options: ServerOptions): Promise<VinyServerHandle> {
@@ -40,10 +44,12 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
   const conversationAdapter = new ConversationAdapter(db);
   const messageAdapter = new MessageAdapter(db);
   const registry = new ConnectionRegistry();
+  const certificate = options.tls === false ? null : await loadServerCertificate(options.tls);
   const transportAdapter = new TransportAdapter(registry);
   const server = new VinyServer({
     port: options.port || 4000,
     host: options.address || "0.0.0.0",
+    ...(certificate ? { tls: { cert: certificate.cert, key: certificate.key } } : {}),
     registry,
     authenticationPort: authAdapter,
     userPort: userAdapter,
@@ -63,6 +69,7 @@ export async function createVinyServer(options: ServerOptions): Promise<VinyServ
   });
 
   return {
+    tls: certificate ? { selfSigned: certificate.selfSigned, fingerprint256: certificate.fingerprint256 } : null,
     start() {
       server.start();
       discoveryAdapter.publish(options.name);

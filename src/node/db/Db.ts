@@ -1,15 +1,14 @@
 import knex, { type Knex } from "knex";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { VINY_HOME } from "../config/paths.js";
 
-const dbDir = path.join(os.homedir(), ".viny");
-fs.mkdirSync(dbDir, { recursive: true });
+fs.mkdirSync(VINY_HOME, { recursive: true });
 
 const config: Knex.Config = {
   client: "better-sqlite3",
   connection: {
-    filename: path.join(dbDir, "viny.db"),
+    filename: path.join(VINY_HOME, "viny.db"),
   },
   useNullAsDefault: true,
 };

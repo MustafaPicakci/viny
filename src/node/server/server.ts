@@ -1,6 +1,7 @@
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
+import { createServer as createHttpsServer, type Server as HttpsServer } from "node:https";
 import { WebSocketServer, type WebSocket } from "ws";
 
 import type AuthenticationPort from "../../core/auth/AuthenticationPort.js";
@@ -29,6 +30,7 @@ interface AuthedRequest extends Request {
 export interface VinyServerOptions {
   port: number;
   host: string;
+  tls?: { cert: string; key: string };
   registry: ConnectionRegistry;
   authenticationPort: AuthenticationPort;
   userPort: UserPort;
@@ -57,7 +59,7 @@ const limiter = rateLimit({
 });
 export default class VinyServer {
   private app?: Express;
-  private httpServer?: HttpServer;
+  private httpServer?: HttpServer | HttpsServer;
   private wsServer?: WebSocketServer;
 
   constructor(private options: VinyServerOptions) {}
@@ -68,14 +70,15 @@ export default class VinyServer {
     this.app.use(limiter);
     this.registerRoutes(this.app);
 
-    this.httpServer = createServer(this.app);
+    this.httpServer = this.options.tls ? createHttpsServer(this.options.tls, this.app) : createServer(this.app);
     this.wireErrorHandler(this.app);
     this.wsServer = new WebSocketServer({ server: this.httpServer, path: "/ws" });
     this.wireWebsocket(this.wsServer);
 
     return new Promise((resolve) => {
       this.httpServer!.listen(this.options.port, this.options.host, () => {
-        console.log(`VinyServer listening on ${this.options.host}:${this.options.port}`);
+        const scheme = this.options.tls ? "https" : "http";
+        console.log(`VinyServer listening on ${scheme}://${this.options.host}:${this.options.port}`);
         resolve();
       });
     });

@@ -1,10 +1,14 @@
-import axios from "axios";
+import axios, { type AxiosInstance } from "axios";
+import https from "node:https";
+import WebSocket from "ws";
 import type { SendMessageResponse } from "../../core/message/usecase/SendMessageUsecase.js";
+import { resolveTlsTrust, type UnknownCertificateHandler } from "../tls/TlsTrust.js";
 
 export type VinyClientOptions = {
   address: string;
   port?: number;
   token?: string;
+  onUnknownCertificate?: UnknownCertificateHandler;
 };
 
 export type MessageHandler = (message: SendMessageResponse) => void;
@@ -15,21 +19,25 @@ export default class VinyClient {
   // private readonly messageHandlers = new Set<MessageHandler>();
   private messageHandler?: MessageHandler;
 
-  private readonly baseUrl: string;
-  private readonly wsUrl: string;
+  private readonly origin: URL;
+  private readonly http: AxiosInstance;
+  private readonly onUnknownCertificate: UnknownCertificateHandler;
+  private httpsAgent?: https.Agent;
+  private trustReady?: Promise<void>;
 
   private constructor(options: VinyClientOptions) {
     const isUrl = options.address.startsWith("http://") || options.address.startsWith("https://");
-    if (isUrl) {
-      const base = options.address.replace(/\/$/, "");
-      this.baseUrl = `${base}/api`;
-      this.wsUrl = base.replace(/^http/, "ws");
-    } else {
-      this.baseUrl = `http://${options.address}:${options.port}/api`;
-      this.wsUrl = `ws://${options.address}:${options.port}`;
-    }
-    axios.defaults.baseURL = this.baseUrl;
+    // Plain host:port always means TLS; unencrypted HTTP only when explicitly asked for with an http:// URL.
+    this.origin = new URL(isUrl ? options.address : `https://${options.address}:${options.port}`);
+    this.http = axios.create({ baseURL: `${this.base()}/api` });
+    this.http.interceptors.request.use(async (config) => {
+      await this.establishTrust();
+      if (this.httpsAgent) config.httpsAgent = this.httpsAgent;
+      return config;
+    });
+    this.onUnknownCertificate = options.onUnknownCertificate ?? (async () => false);
     this.token = options.token;
+    if (this.token) this.http.defaults.headers.common["Authorization"] = `Bearer ${this.token}`;
   }
 
   public static getInstance(options: VinyClientOptions): VinyClient {
@@ -47,14 +55,35 @@ export default class VinyClient {
     return this.token;
   }
 
+  private base(): string {
+    return this.origin.href.replace(/\/$/, "");
+  }
+
+  isEncrypted(): boolean {
+    return this.origin.protocol === "https:";
+  }
+
+  // Resolved once per client; concurrent requests wait on the same check so the user is prompted only once.
+  private establishTrust(): Promise<void> {
+    if (!this.isEncrypted()) return Promise.resolve();
+    this.trustReady ??= (async () => {
+      const port = this.origin.port ? Number(this.origin.port) : 443;
+      this.httpsAgent = new https.Agent(await resolveTlsTrust(this.origin.hostname, port, this.onUnknownCertificate));
+    })().catch((err) => {
+      delete this.trustReady;
+      throw err;
+    });
+    return this.trustReady;
+  }
+
   async register(username: string, password: string) {
-    return axios.post("/auth/register", { username, password });
+    return this.http.post("/auth/register", { username, password });
   }
 
   async login(username: string, password: string) {
-    const { data } = await axios.post("/auth/login", { username, password });
+    const { data } = await this.http.post("/auth/login", { username, password });
     this.token = data.token;
-    axios.defaults.headers.common["Authorization"] = `Bearer ${this.token}`;
+    this.http.defaults.headers.common["Authorization"] = `Bearer ${this.token}`;
 
     return { data };
   }
@@ -63,12 +92,21 @@ export default class VinyClient {
       throw new Error("Not authenticated");
     }
 
-    this.socket = new WebSocket(`${this.wsUrl}/ws?token=${encodeURIComponent(this.token)}`);
-    this.socket.onmessage = (event) => {
-      const raw = JSON.parse(event.data);
+    const wsUrl = `${this.base().replace(/^http/, "ws")}/ws?token=${encodeURIComponent(this.token)}`;
+    await this.establishTrust();
+    const socket = new WebSocket(wsUrl, this.httpsAgent ? { agent: this.httpsAgent } : {});
+    await new Promise<void>((resolve, reject) => {
+      socket.once("open", resolve);
+      socket.once("error", reject);
+    });
+    // After the handshake a failure only means the connection dropped; "close" follows.
+    socket.on("error", () => {});
+    socket.onmessage = (event) => {
+      const raw = JSON.parse(String(event.data));
       const message: SendMessageResponse = { ...raw, timestamp: new Date(raw.timestamp) };
       this.messageHandler?.(message);
     };
+    this.socket = socket;
   }
 
   async disconnect(): Promise<void> {
@@ -81,11 +119,11 @@ export default class VinyClient {
   }
 
   async sendMessage(conversationId: number, text: string) {
-    return axios.post(`/conversations/${conversationId}/messages`, { text });
+    return this.http.post(`/conversations/${conversationId}/messages`, { text });
   }
 
   async logout() {
-    return axios.get("/auth/logout");
+    return this.http.get("/auth/logout");
   }
 
   async connect() {
@@ -93,28 +131,28 @@ export default class VinyClient {
   }
 
   async ping(): Promise<void> {
-    await axios.get("/health", { timeout: 3000 });
+    await this.http.get("/health", { timeout: 3000 });
   }
   async searchUsers(query: string) {
-    return axios.get(`/users/search`, { params: { q: query } });
+    return this.http.get(`/users/search`, { params: { q: query } });
   }
   async listConversations() {
-    return axios.get("/conversations");
+    return this.http.get("/conversations");
   }
   async fetchMessages(conversationId: number) {
-    return axios.get(`/conversations/${conversationId}/messages`);
+    return this.http.get(`/conversations/${conversationId}/messages`);
   }
   async createRoom(name: string) {
-    return axios.post("/room", { name });
+    return this.http.post("/room", { name });
   }
   async addRoomParticipant(roomName: string, username: string) {
-    return axios.post(`/room/${roomName}/participants`, { username });
+    return this.http.post(`/room/${roomName}/participants`, { username });
   }
   async dmUser(username: string) {
-    return axios.post("/dm", { peerUsername: username });
+    return this.http.post("/dm", { peerUsername: username });
   }
 
   async getRoomParticipants(name: string) {
-    return axios.get(`/room/${encodeURIComponent(name)}/participants`);
+    return this.http.get(`/room/${encodeURIComponent(name)}/participants`);
   }
 }

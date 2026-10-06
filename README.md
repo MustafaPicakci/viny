@@ -37,7 +37,7 @@ viny
 This opens the interactive REPL. From there:
 
 ```
-use 192.168.1.100 4000   # connect to the server
+use 192.168.1.100 4000   # connect to the server (confirm its certificate fingerprint the first time)
 register alice secret    # create an account
 login alice secret       # log in
 ```
@@ -118,6 +118,10 @@ viny> [192.168.1.10:4000] bob  DM#alice ›  yes, loud and clear!
 ```
 viny                          Start the interactive REPL
 viny serve -n <name>          Start a server on this machine
+  -p, --port <port>             Port (default 4000)
+  --tls-cert <path>             Certificate chain in PEM (e.g. Let's Encrypt fullchain.pem)
+  --tls-key <path>              Private key in PEM for --tls-cert
+  --no-tls                      Serve plain HTTP (only behind a proxy/tunnel that terminates TLS)
 viny discover                 Discover Viny servers on the local network
 ```
 
@@ -125,7 +129,8 @@ viny discover                 Discover Viny servers on the local network
 
 | Command                             | Description                                       |
 | ----------------------------------- | ------------------------------------------------- |
-| `use <address> [port]`              | Connect to a Viny server (port optional for URLs) |
+| `use <address> [port]`              | Connect to a Viny server over TLS (port optional for URLs; `http://` URL for unencrypted) |
+| `forget-host <address> <port>`      | Forget a trusted self-signed certificate          |
 | `register <username> <password>`    | Create an account                                 |
 | `login <username> <password>`       | Log in                                            |
 | `logout`                            | Log out                                           |
@@ -157,11 +162,26 @@ const client = VinyClient.getInstance({ address: "localhost", port: 4000 });
 await client.login("alice", "secret");
 ```
 
+## Encryption (TLS)
+
+All traffic — messages, passwords and session tokens — is encrypted with TLS by default. How the server's certificate is trusted depends on how it is run:
+
+| Setup | Server | Client |
+| --- | --- | --- |
+| Local network, no domain | `viny serve -n office` — generates a self-signed certificate once (`~/.viny/tls/`) and prints its SHA-256 fingerprint | On first `use`, shows the fingerprint and asks to trust it. Compare it with the one the server printed. The certificate is then pinned in `~/.viny/known_hosts.json`; if it ever changes, the connection is refused. |
+| Server with a domain | `viny serve -n office --tls-cert fullchain.pem --tls-key privkey.pem` — any certificate works: Let's Encrypt, a company CA, a commercial CA | Verified like a browser would, no prompt: `use https://chat.example.com:4000`. Certificates from a company CA installed in the operating system's trust store are accepted (Node.js 22.15+). |
+| Behind a tunnel/proxy that already does TLS | `viny serve -n office --no-tls` | `use https://...` (the tunnel's URL) |
+
+When the server's certificate changes on purpose (e.g. `~/.viny/tls/` was deleted), clients must run `forget-host <address> <port>` and trust the new fingerprint.
+
+The server reads `--tls-cert`/`--tls-key` at startup, so restart it after renewing the certificate.
+
 ## Connecting over the internet (ngrok)
 
-By default viny works on a local network. To expose a server publicly, use ngrok's HTTP tunnel — it provides HTTPS automatically, which prevents ISP-level interception:
+By default viny works on a local network. To expose a server publicly, use ngrok's HTTP tunnel — it provides HTTPS itself, so run the server with `--no-tls` behind it:
 
 ```bash
+viny serve -n my-server --port 4000 --no-tls
 ngrok http 4000
 # → https://abc123.ngrok-free.app
 ```
